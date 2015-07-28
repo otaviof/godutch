@@ -1,4 +1,4 @@
-package go_dutch
+package config
 
 import (
 	"code.google.com/p/gcfg"

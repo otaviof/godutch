@@ -1,4 +1,4 @@
-package go_dutch
+package config
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	config_path := "./etc/go-dutch/go-dutch.ini"
+	config_path := "../etc/godutch/godutch.ini"
 
 	Convey("Should be able to load a INI configuration file", t, func() {
 		config := LoadConfig(config_path)
