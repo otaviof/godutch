@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/otaviof/godutch/config"
 	"github.com/otaviof/godutch/nrpe"
+	"io"
 	"net"
 	"os"
 )
@@ -36,7 +37,14 @@ func main() {
 }
 
 func handleRequest(conn net.Conn) {
-	nrpe_packet, _ := nrpe.Unassemble(conn)
+	request := make([]byte, 1036)
+	n, _ := io.ReadFull(conn, request)
+	// fmt.Println("Debug -> request #", request, "#")
+
+	nrpe_packet, err := nrpe.Unassemble(request, n)
+    if err != nil {
+		panic("Error on Unassemble: " + err.Error())
+    }
 	fmt.Printf("Debug -> nrpe_packet #%+v#\n", nrpe_packet)
 	conn.Close()
 }
