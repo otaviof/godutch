@@ -137,12 +137,25 @@ const (
 	STATE_OK       = 0
 )
 
-// Translation of nrpe original data structure into Go standards
+// Translation of NRPE original data structure
 type Packet struct {
 	PacketVersion int16
 	PacketType    int16
 	CRC32Value    uint32
 	Buffer        string
+}
+
+func NewPacket() (pkt *Packet) {
+    return nil
+}
+
+// Go wrapper around C written method, takes a C.packet as argument and
+// returns a uint32 referent to calculated CRC32.
+func CalcPacketCRC32(c_packet *C.packet) uint32 {
+	c_ieee_table := C.generate_crc32_table()
+    crc32_value := (uint32)(C.calc_packet_crc32(c_packet, c_ieee_table))
+	log.Println("Calculated CRC32:", crc32_value)
+    return crc32_value
 }
 
 // Extracts a NRPE package from a byte array typed argument, it's translated
@@ -163,26 +176,21 @@ func Unassemble(cbytes []byte, size int) (pkt *Packet, err error) {
 	// casting extracted C.char array into a C.packet struct
 	c_packet := (*C.packet)(unsafe.Pointer(c_char))
 	// validating packet's signature, using bytes content
-	c_packet_crc32_value := C.ntohl((C.uint32_t)(c_packet.crc32_value))
+	c_packet_crc32_value := (uint32)(
+        C.ntohl((C.uint32_t)(c_packet.crc32_value)))
 	// special treatment for "buffer" packet entry, based on C.char array
 	c_packet_buffer := (*C.char)(unsafe.Pointer(&c_packet.buffer))
 
 	// CRC32: validating packat's content via informed CRC32 signature; here
 	// using local C methods to integract with raw C.char array
-	c_ieee_table := C.generate_crc32_table()
-	calculated_crc32 := C.calc_packet_crc32(c_packet, c_ieee_table)
+	calculated_crc32 := CalcPacketCRC32(c_packet)
 
-	log.Println("[CRC32] Packet informed:", c_packet_crc32_value,
-		", calculated:", calculated_crc32)
-
-	if (C.ulong)(c_packet_crc32_value) != (C.ulong)(calculated_crc32) {
+	if c_packet_crc32_value != calculated_crc32 {
 		__fatal_msg := fmt.Sprintf(
 			"CRC32 mismatch. Calculated: '%ul', packet's: '%ul';\n",
 			calculated_crc32, c_packet_crc32_value)
 		log.Fatalln(__fatal_msg)
 		return nil, errors.New(__fatal_msg)
-	} else {
-        log.Println("CRC32 on recieved packet matches")
 	}
 
 	// creating a new go struct to represent NRPE packet and casting to

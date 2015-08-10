@@ -58,7 +58,7 @@ func TestPacketExtract(t *testing.T) {
     // instanciating the nrpe class to unassemble mock packet buffer
 	pkt, _ := nrpe.Unassemble(packet_buffer, 1036)
 
-	Convey("Should be able to extract a NRPE packet on net.conn", t, func() {
+	Convey("Should extract a NRPE packet from C bytes", t, func() {
 		So(pkt.Buffer, ShouldEqual, "_NRPE_CHECK")
 	})
 }
