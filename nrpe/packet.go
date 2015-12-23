@@ -104,8 +104,6 @@ unsigned long calc_packet_crc32 (
         crc32_table
     );
 }
-
-// EOF
 */
 import "C"
 
@@ -146,16 +144,16 @@ type Packet struct {
 }
 
 func NewPacket() (pkt *Packet) {
-    return nil
+	return nil
 }
 
 // Go wrapper around C written method, takes a C.packet as argument and
 // returns a uint32 referent to calculated CRC32.
 func CalcPacketCRC32(c_packet *C.packet) uint32 {
 	c_ieee_table := C.generate_crc32_table()
-    crc32_value := (uint32)(C.calc_packet_crc32(c_packet, c_ieee_table))
+	crc32_value := (uint32)(C.calc_packet_crc32(c_packet, c_ieee_table))
 	log.Println("Calculated CRC32:", crc32_value)
-    return crc32_value
+	return crc32_value
 }
 
 // Extracts a NRPE package from a byte array typed argument, it's translated
@@ -177,7 +175,7 @@ func Unassemble(cbytes []byte, size int) (pkt *Packet, err error) {
 	c_packet := (*C.packet)(unsafe.Pointer(c_char))
 	// validating packet's signature, using bytes content
 	c_packet_crc32_value := (uint32)(
-        C.ntohl((C.uint32_t)(c_packet.crc32_value)))
+		C.ntohl((C.uint32_t)(c_packet.crc32_value)))
 	// special treatment for "buffer" packet entry, based on C.char array
 	c_packet_buffer := (*C.char)(unsafe.Pointer(&c_packet.buffer))
 

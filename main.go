@@ -1,52 +1,109 @@
-package main
+package godutch
 
+/*
 import (
 	"fmt"
-	"github.com/otaviof/godutch/config"
-	"github.com/otaviof/godutch/nrpe"
+	"github.com/thejerf/suture"
 	"io"
+	"log"
 	"net"
 	"os"
+	"os/exec"
+	"time"
 )
 
-func main() {
-	cfg := config.LoadConfig("./__etc/godutch/godutch.ini")
-	listen_on := fmt.Sprintf(
-		"%s:%d",
-		cfg.GoDutch.ListenAddress,
-		cfg.GoDutch.ListenPort)
+type Monitor struct {
+	*suture.Supervisor
+	name  string
+	inbox chan []byte
+	bg    *BgCommand
+}
 
-	l, err := net.Listen("tcp", listen_on)
-	if err != nil {
-		fmt.Println("Error listening on:", err.Error())
-		os.Exit(1)
+type BgCommand struct {
+	cmd *exec.Cmd
+}
+
+func (bg *BgCommand) Serve() {
+	env := os.Environ()
+	bg.cmd.Env = append(
+		env,
+		fmt.Sprintf("GODUTCH_SOCKET_PATH=/tmp/%s.sock", "testMonitor"),
+	)
+	log.Println("Starting...")
+	if err := bg.cmd.Start(); err != nil {
+		log.Fatalln("Start: ", err)
 	}
-	defer l.Close()
+	if err := bg.cmd.Wait(); err != nil {
+		log.Println("Wait: ", err)
+	}
+}
 
-	fmt.Println("Listening on: " + listen_on)
+func (bg *BgCommand) Stop() {
+	if err := bg.cmd.Process.Kill(); err != nil {
+		log.Fatal("failed to kill: ", err)
+	}
+}
 
+func NewMonitor(name string, cmd *exec.Cmd) (*Monitor, error) {
+	m := &Monitor{
+		Supervisor: suture.New(name, suture.Spec{
+			Log: func(line string) {
+				log.Println("Suture:", line)
+			},
+		}),
+		bg:    &BgCommand{cmd: cmd},
+		name:  name,
+		inbox: make(chan []byte),
+	}
+	m.Add(m.bg)
+	return m, nil
+}
+
+func reader(r io.Reader) {
+	buf := make([]byte, 1024)
 	for {
-		conn, err := l.Accept()
+		n, err := r.Read(buf[:])
 		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
+			return
 		}
-
-		go handleRequest(conn)
+		println("Client got:", string(buf[0:n]))
 	}
 }
 
-func handleRequest(conn net.Conn) {
-	request := make([]byte, 1036)
-	n, _ := io.ReadFull(conn, request)
-	// fmt.Println("Debug -> request #", request, "#")
+func main() {
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("GODUTCH_SOCKET_PATH=/tmp/%s.sock", "testMonitor"))
+	m, err := NewMonitor(
+		"testMonitor",
+		exec.Command(
+			"/opt/chefdk/embedded/bin/ruby",
+			"/Users/ofernandes/src/go/tmp/starlite/godutch_test.rb",
+		))
+	log.Println("m:", m)
+	log.Println("err:", err)
 
-	nrpe_packet, err := nrpe.Unassemble(request, n)
-    if err != nil {
-		panic("Error on Unassemble: " + err.Error())
-    }
-	fmt.Printf("Debug -> nrpe_packet #%+v#\n", nrpe_packet)
-	conn.Close()
+	go func() {
+		time.Sleep(3 * 1e9)
+		c, err := net.Dial("unix", "/tmp/godutch_test.sock")
+		if err != nil {
+			panic(err)
+		}
+		defer c.Close()
+
+		go reader(c)
+		for {
+			log.Println("*")
+			_, err := c.Write([]byte("{ \"command\": \"__list_check_methods\", \"arguments\": [] }"))
+			if err != nil {
+				log.Fatal("write error:", err)
+				break
+			}
+			time.Sleep(1e9)
+		}
+	}()
+
+	m.Serve()
 }
 
+*/
 /* EOF */
