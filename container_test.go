@@ -3,6 +3,7 @@ package godutch_test
 import (
 	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,6 +29,11 @@ func TestBootstrap(t *testing.T) {
 	Convey("Should be able to bootstrap a container", t, func() {
 		err := c.Bootstrap()
 		So(err, ShouldEqual, nil)
+		So(
+			strings.Join(c.Checks, "::"),
+			ShouldEqual,
+			strings.Join([]string{"check_test", "check_second_test"}, "::"),
+		)
 		c.Bg.Stop()
 	})
 }
