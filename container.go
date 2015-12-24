@@ -25,7 +25,6 @@ type Container struct {
 // to spawn a background process via BgCmd, exposed using Bg attribute.
 func NewContainer(name string, command []string) (*Container, error) {
 	var bg *BgCmd
-	var c *Container
 
 	if len(command) < 2 {
 		err := errors.New("Informed command is not long enough:" +
@@ -37,9 +36,8 @@ func NewContainer(name string, command []string) (*Container, error) {
 	log.Println("Container command:", strings.Join(command, " "))
 	// expanding the command argument into BgCmd
 	bg = NewBgCmd(name, exec.Command(command[0], command[1:]...))
-	c = &Container{Name: name, Bg: bg}
 
-	return c, nil
+	return &Container{Name: name, Bg: bg}, nil
 }
 
 // Prepare a container to be up and running, opening the socket using
@@ -50,12 +48,6 @@ func (c *Container) Bootstrap() error {
 	log.Println("Bootstraping Container:", c.Name)
 	log.Println("Container's socket path:", c.Bg.SocketPath)
 
-	// creating a reader on background command's socket
-	if c.socket, err = net.Dial("unix", c.Bg.SocketPath); err != nil {
-		log.Fatalln("Dialing to socket error: '", err, "'")
-		return err
-	}
-
 	if err = c.listCheckMethods(); err != nil {
 		return err
 	}
@@ -63,14 +55,26 @@ func (c *Container) Bootstrap() error {
 	return nil
 }
 
+func (c *Container) socketDial() error {
+	var err error
+	// creating a reader on background command's socket
+	if c.socket, err = net.Dial("unix", c.Bg.SocketPath); err != nil {
+		log.Fatalln("Dialing to socket error: '", err, "'")
+		return err
+	}
+	return nil
+}
+
 // Stop a container, closing the socket and asking os/exec to kill the process,
 // if not dead just yet.
 func (c *Container) Shutdown() error {
-	var err error
-	if err = c.socket.Close(); err != nil {
-		log.Fatalln("Error on socket close:", err)
-		return err
-	}
+	/*
+		var err error
+		if err = c.socket.Close(); err != nil {
+			log.Fatalln("Error on socket close:", err)
+			return err
+		}
+	*/
 	c.Bg.Stop()
 	return nil
 }
@@ -104,13 +108,25 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 	var respCh chan []byte = make(chan []byte)
 	var errorCh chan error = make(chan error)
 
-	if _, err = c.socket.Write(req); err != nil {
-		log.Fatalln("Socket write error:", err)
+	if c.socketDial(); err != nil {
+		log.Fatalln("Socket DIAL error:", err)
 		return nil, err
 	}
 
+	if _, err = c.socket.Write(req); err != nil {
+		log.Fatalln("Socket WRITE error:", err)
+		return nil, err
+	}
+
+	// background routine to read socke's FD, informing response and error
+	// channels when there's data back
 	go c.socketReader(respCh, errorCh)
 
+	defer c.socket.Close()
+
+	// TODO
+	//   * Handle request timeouts;
+	// http://stackoverflow.com/questions/9680812
 	for {
 		select {
 		case payload = <-respCh:

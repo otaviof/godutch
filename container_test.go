@@ -8,6 +8,36 @@ import (
 	"time"
 )
 
+func mockContainer(t *testing.T, name string) *Container {
+	var err error
+	var c *Container
+	var command []string = []string{
+		"/usr/bin/ruby",
+		"/home/otaviof/src/go/tmp/starlite/godutch_test.rb"}
+
+	c, err = NewContainer(name, command)
+	Convey("Should not return errors on NewContainer", t, func() {
+		So(err, ShouldEqual, nil)
+	})
+
+	return c
+}
+
+func mockBootstrappedContainer(t *testing.T, name string) *Container {
+	var err error
+	var c *Container = mockContainer(t, name)
+
+	go c.Bg.Serve()
+
+	Convey("Should be able to bootstrap a container", t, func() {
+		time.Sleep(1e9)
+		err = c.Bootstrap()
+		So(err, ShouldEqual, nil)
+	})
+
+	return c
+}
+
 func TestNewContainer(t *testing.T) {
 	Convey("Should not return errors on NewContainer", t, func() {
 		_, err := NewContainer("TestNewContainer", []string{"sleep", "1"})
@@ -16,20 +46,9 @@ func TestNewContainer(t *testing.T) {
 }
 
 func TestBootstrapAndShutdown(t *testing.T) {
-	c, _ := NewContainer(
-		"TestBootstrap",
-		[]string{
-			"/usr/bin/ruby",
-			"/home/otaviof/src/go/tmp/starlite/godutch_test.rb"},
-	)
-
-	go c.Bg.Serve()
-	time.Sleep(1e9)
+	c := mockBootstrappedContainer(t, "TestBootstrapAndShutdown")
 
 	Convey("Should be able to bootstrap a container", t, func() {
-		var err error
-		err = c.Bootstrap()
-		So(err, ShouldEqual, nil)
 		So(
 			strings.Join(c.Checks, "::"),
 			ShouldEqual,
