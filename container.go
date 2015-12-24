@@ -63,6 +63,18 @@ func (c *Container) Bootstrap() error {
 	return nil
 }
 
+// Stop a container, closing the socket and asking os/exec to kill the process,
+// if not dead just yet.
+func (c *Container) Shutdown() error {
+	var err error
+	if err = c.socket.Close(); err != nil {
+		log.Fatalln("Error on socket close:", err)
+		return err
+	}
+	c.Bg.Stop()
+	return nil
+}
+
 // Executes the "__list_check_methods" call on the socket interface, load the
 // response onto Container's Checks array of strings.
 func (c *Container) listCheckMethods() error {

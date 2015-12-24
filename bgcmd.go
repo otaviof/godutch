@@ -91,7 +91,6 @@ func (bg *BgCmd) captureOutput() {
 // call, trowing stdout/stderr entries on log interface.
 func (bg *BgCmd) Serve() {
 	var err error
-
 	log.Println("Starting to 'serve':", bg.Name)
 
 	if err = bg.Cmd.Start(); err != nil {
@@ -107,7 +106,8 @@ func (bg *BgCmd) Serve() {
 
 // Stop a background command.
 func (bg *BgCmd) Stop() {
-	if err := bg.Cmd.Process.Kill(); err != nil {
+	var err error
+	if err = bg.Cmd.Process.Kill(); err != nil {
 		log.Fatalln("Error on kill: ", err)
 	}
 }

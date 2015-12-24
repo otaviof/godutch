@@ -15,7 +15,7 @@ func TestNewContainer(t *testing.T) {
 	})
 }
 
-func TestBootstrap(t *testing.T) {
+func TestBootstrapAndShutdown(t *testing.T) {
 	c, _ := NewContainer(
 		"TestBootstrap",
 		[]string{
@@ -27,14 +27,20 @@ func TestBootstrap(t *testing.T) {
 	time.Sleep(1e9)
 
 	Convey("Should be able to bootstrap a container", t, func() {
-		err := c.Bootstrap()
+		var err error
+		err = c.Bootstrap()
 		So(err, ShouldEqual, nil)
 		So(
 			strings.Join(c.Checks, "::"),
 			ShouldEqual,
 			strings.Join([]string{"check_test", "check_second_test"}, "::"),
 		)
-		c.Bg.Stop()
+	})
+
+	Convey("Should be able to shutdown a running Container", t, func() {
+		var err error
+		err = c.Shutdown()
+		So(err, ShouldEqual, nil)
 	})
 }
 
