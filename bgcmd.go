@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+//
+// BgCmd type is the representation of any command to run in background via
+// GoDutch, with socket and other attributes to handle output and IPC.
+//
 type BgCmd struct {
 	Name       string
 	SocketPath string
@@ -19,6 +23,8 @@ type BgCmd struct {
 	stderr     io.ReadCloser
 }
 
+// Creates a new BgCmd object, which will prepare socket and os/exec command to
+// run in background, after "Bootstrap".
 func NewBgCmd(name string, cmd *exec.Cmd) *BgCmd {
 	var err error
 
@@ -28,10 +34,12 @@ func NewBgCmd(name string, cmd *exec.Cmd) *BgCmd {
 		SocketPath: fmt.Sprintf("/tmp/godutch-%s.sock", name),
 	}
 
+	// socket information, basic commnicaton method with background process
 	os.Setenv("GODUTCH_SOCKET_PATH", "")
 	bg.Env = bg.setenv("GODUTCH_SOCKET_PATH", bg.SocketPath)
 	bg.Cmd.Env = bg.Env
 
+	// leaving stdout and stderr pipes for capturing outputs
 	if bg.stdout, err = bg.Cmd.StdoutPipe(); err != nil {
 		log.Fatalln(err)
 	}
@@ -42,6 +50,8 @@ func NewBgCmd(name string, cmd *exec.Cmd) *BgCmd {
 	return bg
 }
 
+// Helper method to set-up a valid environment slice, adding the informed
+// arguements in a key-value fashion.
 func (bg *BgCmd) setenv(key string, value string) []string {
 	var env []string = os.Environ()
 	var newEnv []string
@@ -59,6 +69,8 @@ func (bg *BgCmd) setenv(key string, value string) []string {
 	return newEnv
 }
 
+// Reads stdout and stderr io.Readers in a single Scanner, feeding the log
+// interface with what's found. Bufferized IO is used here, avoid blocking.
 func (bg *BgCmd) captureOutput() {
 	var err error
 	var multi io.Reader
@@ -75,6 +87,8 @@ func (bg *BgCmd) captureOutput() {
 	}
 }
 
+// Start serving a background command. Spawn the command and handles the "wait"
+// call, trowing stdout/stderr entries on log interface.
 func (bg *BgCmd) Serve() {
 	var err error
 
@@ -91,6 +105,7 @@ func (bg *BgCmd) Serve() {
 	}
 }
 
+// Stop a background command.
 func (bg *BgCmd) Stop() {
 	if err := bg.Cmd.Process.Kill(); err != nil {
 		log.Fatalln("Error on kill: ", err)

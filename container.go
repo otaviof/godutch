@@ -10,15 +10,6 @@ import (
 	"strings"
 )
 
-/** TODOs *********************************************************************
- * - Find a way to map a go-channel into the socket, the "Container" needs to
- *   watch if a given socket is alive;
- * - The Container knows which checks are available through
- *   "__list_check_methods" call;
- * - Think on how to wrap the protocol, the json mappings and conversion into
- *   []byte, which will be written into the socket;
- */
-
 //
 // A Container is a wrapper of tools around a background process, on which we
 // communicate using a socket and GoDutch-Protocol, based on JSON.
@@ -30,6 +21,8 @@ type Container struct {
 	Checks []string
 }
 
+// Creates a new Container type, using name and command informed by parameter
+// to spawn a background process via BgCmd, exposed using Bg attribute.
 func NewContainer(name string, command []string) (*Container, error) {
 	var bg *BgCmd
 	var c *Container
@@ -49,6 +42,8 @@ func NewContainer(name string, command []string) (*Container, error) {
 	return c, nil
 }
 
+// Prepare a container to be up and running, opening the socket using
+// Container's "socket" attribute.
 func (c *Container) Bootstrap() error {
 	var err error
 
@@ -68,6 +63,8 @@ func (c *Container) Bootstrap() error {
 	return nil
 }
 
+// Executes the "__list_check_methods" call on the socket interface, load the
+// response onto Container's Checks array of strings.
 func (c *Container) listCheckMethods() error {
 	var req []byte
 	var resp *Response
@@ -85,6 +82,9 @@ func (c *Container) listCheckMethods() error {
 	return nil
 }
 
+// Execute a request towards the socket interface, simple by syncronously
+// writing on the socket, and via a goroutine reading back from it, which must
+// be a Response type of payload.
 func (c *Container) Execute(req []byte) (*Response, error) {
 	var err error
 	var payload []byte
@@ -103,6 +103,7 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 		select {
 		case payload = <-respCh:
 			log.Println("Got back:", string(payload[:]))
+			// converting JSON contents into local struct
 			if resp, err = NewResponse(payload); err != nil {
 				log.Fatalln("Parsing response:", err)
 				return nil, err
@@ -115,13 +116,15 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 	}
 }
 
+// Reads from a socket file descriptor onto a local buffer, which is by the end
+// sent to response-channel (respCh), informed by parameters. Error is captured
+// locally and also sent back by error-channel (errorCh).
 func (c *Container) socketReader(respCh chan []byte, errorCh chan error) {
 	var buf bytes.Buffer
-
 	for {
 		_, err := io.Copy(&buf, c.socket)
 		if err != nil {
-			log.Fatalln("Socket read:", err)
+			log.Fatalln("Socket read error:", err)
 			errorCh <- err
 			return
 		}
