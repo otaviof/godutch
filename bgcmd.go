@@ -96,7 +96,6 @@ func (bg *BgCmd) Serve() {
 	if err = bg.Cmd.Start(); err != nil {
 		log.Fatalln("Start error:", err)
 	}
-
 	bg.captureOutput()
 
 	if err = bg.Cmd.Wait(); err != nil {
