@@ -136,6 +136,7 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 				log.Fatalln("Parsing response:", err)
 				return nil, err
 			}
+			log.Printf("Response: %#v", resp)
 			return resp, nil
 		case err = <-errorCh:
 			log.Fatalln("Socket reading error:", err)
