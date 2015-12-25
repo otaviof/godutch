@@ -15,13 +15,23 @@ func TestNewRequest(t *testing.T) {
 	})
 }
 
-func TestNewResponse(t *testing.T) {
-	Convey("Should be able to instantiate a new Response", t, func() {
+func TestNewResponseListCheckMethods(t *testing.T) {
+	Convey("Should be able to new Response '__list_check_methods'", t, func() {
 		payload := []byte(
 			"{\"name\":\"__list_check_methods\",\"stdout\":[\"check_test\",\"check_second_test\"]}")
 		resp, err := NewResponse(payload)
 		So(err, ShouldEqual, nil)
 		So(resp.Name, ShouldEqual, "__list_check_methods")
+	})
+}
+
+func TestNewResponseCheckReturn(t *testing.T) {
+	Convey("Should be able to new Response 'check_test'", t, func() {
+		payload := []byte(
+			"{\"name\":\"check_test\",\"status\":0,\"stdout\":[\"check_test output\"],\"metrics\":[{\"okay\":1}]}")
+		resp, err := NewResponse(payload)
+		So(err, ShouldEqual, nil)
+		So(resp.Status, ShouldEqual, 0)
 	})
 }
 

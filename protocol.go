@@ -19,10 +19,11 @@ type Request struct {
 // it's attributes.
 //
 type Response struct {
-	Name   string   `json:"name"`
-	Status int      `json:"status"`
-	Stdout []string `json:"stdout"`
-	Error  string   `json:"error"`
+	Name    string           `json:"name"`
+	Status  int              `json:"status"`
+	Stdout  []string         `json:"stdout"`
+	Metrics []map[string]int `json:"metrics,omitempty"`
+	Error   string           `json:"error,omitempty"`
 }
 
 // Creates a slice of bytes that maches the JSON representation of informed
