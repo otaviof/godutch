@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 )
 
 //
@@ -60,24 +61,28 @@ func (c *Container) Bootstrap() error {
 
 func (c *Container) socketDial() error {
 	var err error
-	// creating a reader on background command's socket
-	if c.socket, err = net.Dial("unix", c.Bg.SocketPath); err != nil {
-		log.Fatalln("Dialing to socket error: '", err, "'")
-		return err
+	var counter int = 0
+
+	for {
+		counter += 1
+		// creating a reader on background command's socket
+		if c.socket, err = net.Dial("unix", c.Bg.SocketPath); err != nil {
+			log.Println("(", counter, "/ 3 ) net.Dial error: '", err, "'")
+			if counter >= 3 {
+				return err
+			} else {
+				time.Sleep(time.Second)
+				continue
+			}
+		}
+		return nil
 	}
-	return nil
 }
 
 // Stop a container, closing the socket and asking os/exec to kill the process,
 // if not dead just yet.
 func (c *Container) Shutdown() error {
-	/*
-		var err error
-		if err = c.socket.Close(); err != nil {
-			log.Fatalln("Error on socket close:", err)
-			return err
-		}
-	*/
+	defer c.socket.Close()
 	c.Bg.Stop()
 	return nil
 }

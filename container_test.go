@@ -7,7 +7,6 @@ import (
 	"path"
 	"strings"
 	"testing"
-	"time"
 )
 
 func mockContainer(t *testing.T, name string) *Container {
@@ -37,7 +36,6 @@ func mockBootstrappedContainer(t *testing.T, name string) *Container {
 	go c.Bg.Serve()
 
 	Convey("Should be able to bootstrap a container", t, func() {
-		time.Sleep(1e9)
 		err = c.Bootstrap()
 		So(err, ShouldEqual, nil)
 	})
