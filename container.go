@@ -14,10 +14,11 @@ import (
 // communicate using a socket and GoDutch-Protocol, based on JSON.
 //
 type Container struct {
-	Name   string
-	Bg     *BgCmd
-	socket net.Conn
-	Checks []string
+	Name         string
+	Bg           *BgCmd
+	socket       net.Conn
+	Checks       []string
+	Bootstrapped bool
 }
 
 // Creates a new Container type, using name and command informed by parameter
@@ -51,6 +52,8 @@ func (c *Container) Bootstrap() error {
 	if err = c.listCheckMethods(); err != nil {
 		return err
 	}
+
+	c.Bootstrapped = true
 
 	return nil
 }
