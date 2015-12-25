@@ -6,16 +6,16 @@ import (
 	"log"
 )
 
-type ContainerShip struct {
+type Panamax struct {
 	*suture.Supervisor
 	Containers map[string]*Container
 	Checks     map[string]string
 }
 
-func NewContainerShip() *ContainerShip {
-	var cs *ContainerShip
-	cs = &ContainerShip{
-		Supervisor: suture.New("ContainerShip", suture.Spec{
+func NewPanamax() *Panamax {
+	var p *Panamax
+	p = &Panamax{
+		Supervisor: suture.New("Panamax", suture.Spec{
 			Log: func(line string) {
 				log.Println("Suture:", line)
 			},
@@ -23,10 +23,10 @@ func NewContainerShip() *ContainerShip {
 		Containers: make(map[string]*Container),
 		Checks:     make(map[string]string),
 	}
-	return cs
+	return p
 }
 
-func (cs *ContainerShip) Onboard(container *Container) error {
+func (p *Panamax) Onboard(container *Container) error {
 	var err error
 
 	if len(container.Checks) <= 0 {
@@ -36,35 +36,36 @@ func (cs *ContainerShip) Onboard(container *Container) error {
 	}
 
 	log.Println("Loading container:", container.Name)
-	cs.Containers[container.Name] = container
+	p.Containers[container.Name] = container
 	for _, checkName := range container.Checks {
 		log.Println("Loading check:", checkName)
-		cs.Checks[checkName] = container.Name
+		p.Checks[checkName] = container.Name
 	}
 
 	return err
 }
 
-func (cs *ContainerShip) Offboard(containerName string) error {
+func (p *Panamax) Offboard(containerName string) error {
 	var err error
 	return err
 }
 
-func (cs *ContainerShip) Execute(cmd string, args []string) (*Response, error) {
+func (p *Panamax) Execute(cmd string, args []string) (*Response, error) {
 	var err error
 	var containerName string
 	var c *Container
 	var resp *Response
 	var req []byte
 
-	containerName = cs.Checks[cmd]
+	containerName = p.Checks[cmd]
 	log.Println("Container:", containerName, ", Command:", cmd)
-	c = cs.Containers[containerName]
+	c = p.Containers[containerName]
 
 	if req, err = NewRequest(cmd, args); err != nil {
 		log.Fatalln("Error on creating Request:", err)
 		return nil, err
 	}
+
 	if resp, err = c.Execute(req); err != nil {
 		log.Fatalln("On request:", string(req[:]))
 		log.Fatalln("Error on Execute '", cmd, "':", err)
