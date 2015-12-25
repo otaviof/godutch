@@ -1,6 +1,7 @@
 package godutch_test
 
 import (
+	"fmt"
 	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
 	"log"
@@ -34,13 +35,16 @@ func TestExecuteCheck(t *testing.T) {
 		So(err2, ShouldEqual, nil)
 	})
 
-	Convey("Should be able to invoke a check", t, func() {
-		time.Sleep(1e9)
-		resp, err := p.Execute("check_test", []string{})
-		log.Println("TEST Response:", resp)
-		So(err, ShouldEqual, nil)
-		So(resp.Name, ShouldEqual, "check_test")
-	})
+	for checkName, _ := range p.Checks {
+		log.Println("TEST checkName:", checkName)
+		Convey(fmt.Sprintf("Should be able Execute %s", checkName), t, func() {
+			time.Sleep(1e9)
+			resp, err := p.Execute(checkName, []string{})
+			log.Println("TEST Response:", resp)
+			So(err, ShouldEqual, nil)
+			So(resp.Name, ShouldEqual, checkName)
+		})
+	}
 
 	p.Stop()
 
