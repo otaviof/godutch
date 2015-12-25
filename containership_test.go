@@ -3,6 +3,7 @@ package godutch_test
 import (
 	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
+	"log"
 	"testing"
 	"time"
 )
@@ -33,14 +34,15 @@ func TestExecuteCheck(t *testing.T) {
 		So(err2, ShouldEqual, nil)
 	})
 
-	go func() {
-		Convey("Should be able to invoke a check", t, func() {
-			time.Sleep(8 * 1e9)
-			_, err := cs.Execute("check_test", []string{})
-			So(err, ShouldEqual, nil)
-		})
-		cs.Stop()
-	}()
+	Convey("Should be able to invoke a check", t, func() {
+		time.Sleep(1e9)
+		resp, err := cs.Execute("check_test", []string{})
+		log.Println("TEST Response:", resp)
+		So(err, ShouldEqual, nil)
+		So(resp.Name, ShouldEqual, "check_test")
+	})
+
+	cs.Stop()
 
 }
 
