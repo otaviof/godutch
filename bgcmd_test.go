@@ -10,7 +10,7 @@ import (
 func TestNewBgCmd(t *testing.T) {
 	bg := NewBgCmd("TestNewBgCmd", []string{"sleep", "1"})
 
-	Convey("Should be albe have a new obj. with custom Env.", t, func() {
+	Convey("Should be albe have a custom ENV.", t, func() {
 		So(bg.Name, ShouldEqual, "TestNewBgCmd")
 		socketStr := "GODUTCH_SOCKET_PATH=/tmp/godutch-TestNewBgCmd.sock"
 		So(strings.Join(bg.Env, ";"), ShouldContainSubstring, socketStr)
