@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os/exec"
 	"strings"
 )
 
@@ -34,8 +33,9 @@ func NewContainer(name string, command []string) (*Container, error) {
 
 	log.Println("*** Container:", name, "***")
 	log.Println("Container command:", strings.Join(command, " "))
+
 	// expanding the command argument into BgCmd
-	bg = NewBgCmd(name, exec.Command(command[0], command[1:]...))
+	bg = NewBgCmd(name, command)
 
 	return &Container{Name: name, Bg: bg}, nil
 }
@@ -132,7 +132,7 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 		case payload = <-respCh:
 			log.Println("Got back:", string(payload[:]))
 			// converting JSON contents into local struct
-			if resp, err = NewResponse(payload); err != nil {
+			if resp, err = NewResponse(payload[:]); err != nil {
 				log.Fatalln("Parsing response:", err)
 				return nil, err
 			}
