@@ -3,6 +3,8 @@ package godutch_test
 import (
 	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
+	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -11,9 +13,14 @@ import (
 func mockContainer(t *testing.T, name string) *Container {
 	var err error
 	var c *Container
-	var command []string = []string{
-		"/usr/bin/ruby",
-		"/home/otaviof/src/go/tmp/starlite/godutch_test.rb"}
+	var cwd string
+	var command []string
+	var testScriptPath string
+
+	// determining the script location, based on current
+	cwd, _ = os.Getwd()
+	testScriptPath = path.Join(cwd, "godutch-checks.rb")
+	command = []string{"/usr/bin/ruby", testScriptPath}
 
 	c, err = NewContainer(name, command)
 	Convey("Should not return errors on NewContainer", t, func() {
