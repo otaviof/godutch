@@ -21,6 +21,15 @@ func mockContainer(t *testing.T, name string) *Container {
 	testScriptPath = path.Join(cwd, "godutch-checks.rb")
 	command = []string{"/usr/bin/ruby", testScriptPath}
 
+	/*
+		command = []string{
+			"/home/otaviof/src/github/godutch-perl/bin/godutch",
+			"--include", "/home/otaviof/src/github/godutch-perl/t/lib",
+			"--module", "Basic",
+			"--function", "checks",
+		}
+	*/
+
 	c, err = NewContainer(name, command)
 	Convey("Should not return errors on NewContainer", t, func() {
 		So(err, ShouldEqual, nil)

@@ -63,6 +63,8 @@ func (bg *BgCmd) Serve() {
 	}
 }
 
+// Handles the creation of a new exec.Command instance with informed parameters
+// and custom environment.
 func (bg *BgCmd) spawnCmd() error {
 	var err error
 

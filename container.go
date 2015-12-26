@@ -121,6 +121,7 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 		return nil, err
 	}
 
+	log.Println("Sending request:", string(req[:]))
 	if _, err = c.socket.Write(req); err != nil {
 		log.Fatalln("Socket WRITE error:", err)
 		return nil, err

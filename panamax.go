@@ -67,7 +67,8 @@ func (p *Panamax) Onboard(c *Container) error {
 	return nil
 }
 
-// Adding background process to the local Supervisor.
+// Adding background process to the local Supervisor, saving the unique
+// service-id into the local registry.
 func (p *Panamax) RegisterService(c *Container) {
 	p.ServiceToken[c.Name] = p.Add(c.Bg)
 }
