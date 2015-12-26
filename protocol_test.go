@@ -11,7 +11,7 @@ func TestNewRequest(t *testing.T) {
 		payload, err := NewRequest("test", []string{})
 		So(err, ShouldEqual, nil)
 		payloadStr := string(payload[:])
-		So(payloadStr, ShouldEqual, "{\"command\":\"test\",\"arguments\":[]}")
+		So(payloadStr, ShouldEqual, "{\"command\":\"test\",\"arguments\":[]}\n")
 	})
 }
 

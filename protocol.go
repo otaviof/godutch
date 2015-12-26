@@ -39,6 +39,7 @@ func NewRequest(commandName string, arguments []string) ([]byte, error) {
 		log.Fatalln("Error on JSON Marshal: ", err)
 		return nil, err
 	}
+	payload = append(payload, []byte("\n")[0])
 
 	return payload, nil
 }
