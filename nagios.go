@@ -1,4 +1,4 @@
-package nrpe
+package godutch
 
 /*
 // ---------------------------------------------------------------------------
@@ -135,72 +135,78 @@ const (
 	STATE_OK       = 0
 )
 
-// Translation of NRPE original data structure
-type Packet struct {
-	PacketVersion int16
-	PacketType    int16
-	CRC32Value    uint32
-	Buffer        string
+type NRPEPacket struct {
+	Version int16
+	Type    int16
+	CRC32   uint32
+	Buffer  string
+	cPacket *C.packet
+	cbytes  []byte
+	size    int
 }
 
-func NewPacket() (pkt *Packet) {
+// Creates and validate a NRPE packet, using c bytes input.
+func NewNRPEPacket(cbytes []byte, size int) (*NRPEPacket, error) {
+	var err error
+	var pkt *NRPEPacket = &NRPEPacket{cbytes: cbytes, size: size}
+
+	if err = pkt.checkPacketSize(); err != nil {
+		log.Fatalln("NRPE Packet size does not match:", err)
+		return nil, err
+	}
+
+	// bootstraping C struct from informed bytes
+	pkt.cbytesIntoStruct()
+
+	if err = pkt.validateCRC32(); err != nil {
+		log.Fatalln("NRPE Packet's CRC32 does not match:", err)
+		return nil, err
+	}
+
+	return pkt, err
+}
+
+// Wraps the most of type-casting for a C packet into Go.
+func (pkt *NRPEPacket) cbytesIntoStruct() {
+	var cChar *C.char
+
+	// extracting original bytes on local C.char pointer
+	cChar = (*C.char)(unsafe.Pointer(&pkt.cbytes[0]))
+	// casting extracted C.char array into a C.packet struct
+	pkt.cPacket = (*C.packet)(unsafe.Pointer(cChar))
+
+	// also extracting crc32 value
+	pkt.CRC32 = uint32(C.ntohl((C.uint32_t)(pkt.cPacket.crc32_value)))
+	// packet's buffer
+	pkt.Buffer = C.GoString((*C.char)(unsafe.Pointer(&pkt.cPacket.buffer)))
+}
+
+// Double check if informed packet size matches defaults.
+func (pkt *NRPEPacket) checkPacketSize() error {
+	var err error
+	if pkt.size != NRPE_PACKET_SIZE {
+		err = errors.New(
+			fmt.Sprintf(
+				"Invalid NRPE packet size: '%d', expected: '%d'",
+				pkt.size, NRPE_PACKET_SIZE))
+		return err
+	}
 	return nil
 }
 
-// Go wrapper around C written method, takes a C.packet as argument and
-// returns a uint32 referent to calculated CRC32.
-func CalcPacketCRC32(c_packet *C.packet) uint32 {
-	c_ieee_table := C.generate_crc32_table()
-	crc32_value := (uint32)(C.calc_packet_crc32(c_packet, c_ieee_table))
-	log.Println("Calculated CRC32:", crc32_value)
-	return crc32_value
-}
+// Calculates the CRC32 using C function and compares with informed value, all
+// ulong are cast into uint32 type.
+func (pkt *NRPEPacket) validateCRC32() error {
+	var err error
+	var cIEEETable *C.ulong = C.generate_crc32_table()
+	var crc32 uint32 = (uint32)(C.calc_packet_crc32(pkt.cPacket, cIEEETable))
 
-// Extracts a NRPE package from a byte array typed argument, it's translated
-// into original transport format (*C.char) and then binary converted to have
-// a local CGO struct returned. Array size (int) is also mandatory as second
-// argument.
-func Unassemble(cbytes []byte, size int) (pkt *Packet, err error) {
-	// checking for the packet size read from socket
-	if size != NRPE_PACKET_SIZE {
-		__fatal_msg := fmt.Sprintf("Wrong packet size: %d/%d\n",
-			size, NRPE_PACKET_SIZE)
-		log.Fatalf(__fatal_msg)
-		return nil, errors.New(__fatal_msg)
+	if pkt.CRC32 != crc32 {
+		err = errors.New(fmt.Sprintf("CRC32 mismatch %d/%d", crc32, pkt.CRC32))
+		return err
 	}
 
-	// extracting original bytes on local C.char pointer
-	c_char := (*C.char)(unsafe.Pointer(&cbytes[0]))
-	// casting extracted C.char array into a C.packet struct
-	c_packet := (*C.packet)(unsafe.Pointer(c_char))
-	// validating packet's signature, using bytes content
-	c_packet_crc32_value := (uint32)(
-		C.ntohl((C.uint32_t)(c_packet.crc32_value)))
-	// special treatment for "buffer" packet entry, based on C.char array
-	c_packet_buffer := (*C.char)(unsafe.Pointer(&c_packet.buffer))
-
-	// CRC32: validating packat's content via informed CRC32 signature; here
-	// using local C methods to integract with raw C.char array
-	calculated_crc32 := CalcPacketCRC32(c_packet)
-
-	if c_packet_crc32_value != calculated_crc32 {
-		__fatal_msg := fmt.Sprintf(
-			"CRC32 mismatch. Calculated: '%ul', packet's: '%ul';\n",
-			calculated_crc32, c_packet_crc32_value)
-		log.Fatalln(__fatal_msg)
-		return nil, errors.New(__fatal_msg)
-	}
-
-	// creating a new go struct to represent NRPE packet and casting to
-	// convert into Go types, and "hlons(3)" for network byte order
-	go_packet := &Packet{
-		PacketVersion: (int16)(C.htons((C.uint16_t)(c_packet.packet_version))),
-		PacketType:    (int16)(C.htons((C.uint16_t)(c_packet.packet_type))),
-		CRC32Value:    (uint32)(c_packet_crc32_value),
-		Buffer:        (string)(C.GoString(c_packet_buffer)),
-	}
-
-	return go_packet, nil
+	return nil
 }
 
 /* EOF */

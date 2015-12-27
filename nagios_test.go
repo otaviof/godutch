@@ -1,7 +1,7 @@
-package nrpe_test
+package godutch_test
 
 import (
-	"github.com/otaviof/godutch/nrpe"
+	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -55,10 +55,11 @@ func TestPacketExtract(t *testing.T) {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 49, 94}
 
-    // instanciating the nrpe class to unassemble mock packet buffer
-	pkt, _ := nrpe.Unassemble(packet_buffer, 1036)
+	// instanciating the nrpe class to unassemble mock packet buffer
+	pkt, err := NewNRPEPacket(packet_buffer, 1036)
 
 	Convey("Should extract a NRPE packet from C bytes", t, func() {
+		So(err, ShouldEqual, nil)
 		So(pkt.Buffer, ShouldEqual, "_NRPE_CHECK")
 	})
 }
