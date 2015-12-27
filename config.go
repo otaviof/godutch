@@ -73,6 +73,12 @@ func NewConfig(configPath string) (*Config, error) {
 		return nil, err
 	}
 
+	// verifying if socket directory exists
+	if _, err = exists(cfg.GoDutch.SocketsDir); err != nil {
+		log.Fatalln("Can't find directory for 'socket_dir': ", err)
+		return nil, err
+	}
+
 	// loading containers configuration
 	if err = cfg.globContainersConfig(filepath.Dir(cfgPathAbs)); err != nil {
 		log.Fatalln("Error during containers load:", err)
