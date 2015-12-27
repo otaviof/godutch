@@ -12,25 +12,14 @@ import (
 func mockContainer(t *testing.T, name string) *Container {
 	var err error
 	var c *Container
-	// var cwd string
-	var command []string
-	// var testScriptPath string
+	var cfg *Config
 
-	// determining the script location, based on current
-	/*
-		cwd, _ = os.Getwd()
-		testScriptPath = path.Join(cwd, "godutch-checks.rb")
-		command = []string{"/usr/bin/ruby", testScriptPath}
-	*/
-
-	command = []string{
-		"/home/otaviof/src/github/godutch-perl/bin/godutch",
-		"--include", "/home/otaviof/src/github/godutch-perl/t/lib",
-		"--module", "Basic",
-		"--function", "checks",
+	if cfg, err = NewConfig("__etc/godutch/godutch.ini"); err != nil {
+		panic(err)
 	}
 
-	c, err = NewContainer(name, command)
+	c, err = NewContainer(name, cfg.Containers["rubycontainer"].Command)
+
 	Convey("Should not return errors on NewContainer", t, func() {
 		So(err, ShouldEqual, nil)
 	})
