@@ -1,7 +1,9 @@
 package godutch
 
 import (
+	"errors"
 	"fmt"
+	"github.com/thejerf/suture"
 	"log"
 	"net"
 )
@@ -13,16 +15,68 @@ import (
 type NRPESrvc struct {
 	listener net.Listener
 	cfg      *NRPEConfig
-	p        *Panamax
+	g        *GoDutch
+	listenOn string
 }
 
 // Creates a new object from NRPESrvc.
-func NewNRPESrvc(cfg *NRPEConfig, p *Panamax) (*NRPESrvc, error) {
+func NewNRPESrvc(cfg *NRPEConfig, g *GoDutch) (*NRPESrvc, error) {
 	var err error
 	var ns *NRPESrvc
-	// initializing object with parameter informed items.
-	ns = &NRPESrvc{cfg: cfg, p: p}
+	ns = &NRPESrvc{
+		cfg:      cfg,
+		g:        g,
+		listenOn: fmt.Sprintf("%s:%d", cfg.Interface, cfg.Port),
+	}
 	return ns, err
+}
+
+// Displays the name for this service (component).
+func (ns *NRPESrvc) ComponentName() string {
+	return "NRPEService"
+}
+
+// Displays the type of component, and since here it only needs to listen for
+// the NRPE port, it's type is "service".
+func (ns *NRPESrvc) ComponentType() string {
+	return "service"
+}
+
+// Returns the pointer to a Suture's capable object, in this case is "self".
+func (ns *NRPESrvc) ComponentObject() suture.Service {
+	return ns
+}
+
+// Returns the checks available on this component, in this case, it's none.
+func (ns *NRPESrvc) ComponentChecks() []string {
+	return []string{}
+}
+
+// Execute method is not implememented on this Object, atlhough, still required
+// to be part of "component" interface.
+func (ns *NRPESrvc) Execute(req []byte) (*Response, error) {
+	var err error
+	var resp *Response = &Response{}
+	return resp, err
+}
+
+func (ns *NRPESrvc) Shutdown() error {
+	return nil
+}
+
+// Check if the port is available for listening on.
+func (ns *NRPESrvc) Bootstrap() error {
+	var err error
+	var conn net.Conn
+
+	if conn, err = net.Dial("tcp", ns.listenOn); err != nil {
+		// we expect to have error here, it means that the port is available
+		return nil
+	}
+	defer conn.Close()
+
+	err = errors.New("Interface (and port) not available: " + ns.listenOn)
+	return err
 }
 
 // Start listening on network interface and port, asyncronously will spawn a
@@ -79,8 +133,8 @@ func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 	}
 
 	// using buffer to exectract command and it's argument
-	if resp, err = ns.panamaxExec(cmd, args); err != nil {
-		log.Fatalln("Error on panamax buffer exec:", err)
+	if resp, err = ns.godutchExec(cmd, args); err != nil {
+		log.Fatalln("Error on godutch buffer exec:", err)
 		return
 	}
 
@@ -90,15 +144,15 @@ func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 }
 
 // Extract command and arguments from the packet buffer and compose a call
-// towards Panamax.
-func (ns *NRPESrvc) panamaxExec(cmd string, args []string) (*Response, error) {
+// towards GoDutch.
+func (ns *NRPESrvc) godutchExec(cmd string, args []string) (*Response, error) {
 	var err error
 	var resp *Response
 
-	log.Printf("About to Panamax Execute: cmd: '%s', args: '%s'", cmd, args)
+	log.Printf("About to GoDutch Execute: cmd: '%s', args: '%s'", cmd, args)
 
-	if resp, err = ns.p.Execute(cmd, args); err != nil {
-		log.Fatalln("Error on Panamax.Execute:", err)
+	if resp, err = ns.g.Execute(cmd, args); err != nil {
+		log.Fatalln("Error on GoDutch.Execute:", err)
 		return nil, err
 	}
 

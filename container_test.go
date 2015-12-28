@@ -42,21 +42,25 @@ func mockBootstrappedContainer(t *testing.T, name string) *Container {
 }
 
 func TestNewContainer(t *testing.T) {
+	var err error
+
 	Convey("Should not return errors on NewContainer", t, func() {
-		_, err := NewContainer("TestNewContainer", []string{"sleep", "1"})
+		_, err = NewContainer("TestNewContainer", []string{"sleep", "1"})
 		So(err, ShouldEqual, nil)
 	})
 }
 
-func TestBootstrapAndShutdown(t *testing.T) {
-	c := mockBootstrappedContainer(t, "TestBootstrapAndShutdown")
+func TestBootstrapAndComponentChecks(t *testing.T) {
+	var err error
+	var c *Container
+
+	c = mockBootstrappedContainer(t, "TestBootstrapAndComponentChecks")
 
 	Convey("Should be able to bootstrap a container", t, func() {
-		So(strings.Join(c.Checks, "::"), ShouldContainSubstring, "check")
+		So(strings.Join(c.ComponentChecks(), "::"), ShouldContainSubstring, "check")
 	})
 
-	Convey("Should be able to shutdown a running Container", t, func() {
-		var err error
+	Convey("Should be able to shutdown container.", t, func() {
 		err = c.Shutdown()
 		So(err, ShouldEqual, nil)
 	})

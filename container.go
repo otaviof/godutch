@@ -3,6 +3,7 @@ package godutch
 import (
 	"bytes"
 	"errors"
+	"github.com/thejerf/suture"
 	"io"
 	"log"
 	"net"
@@ -18,8 +19,8 @@ type Container struct {
 	Name         string
 	Bg           *BgCmd
 	socket       net.Conn
+	bootstrapped bool
 	Checks       []string
-	Bootstrapped bool
 }
 
 // Creates a new Container type, using name and command informed by parameter
@@ -42,10 +43,36 @@ func NewContainer(name string, command []string) (*Container, error) {
 	return &Container{Name: name, Bg: bg}, nil
 }
 
+// Returns the component type, which in this case is a container
+func (c *Container) ComponentType() string {
+	return "container"
+}
+
+// Return the container name to "component" interface.
+func (c *Container) ComponentName() string {
+	return c.Name
+}
+
+// Returns the object that shall be kept alive by Supervisor Trees (Suture), in
+// the Container case we are interesed on having bgcmd object alive.
+func (c *Container) ComponentObject() suture.Service {
+	return c.Bg
+}
+
+// Part of "component" interface, list which checks are available.
+func (c *Container) ComponentChecks() []string {
+	return c.Checks
+}
+
 // Prepare a container to be up and running, opening the socket using
 // Container's "socket" attribute.
 func (c *Container) Bootstrap() error {
 	var err error
+
+	if c.bootstrapped {
+		log.Println("Container has already been bootstraped.")
+		return nil
+	}
 
 	log.Println("Bootstraping Container:", c.Name)
 	log.Println("Container's socket path:", c.Bg.SocketPath)
@@ -54,7 +81,7 @@ func (c *Container) Bootstrap() error {
 		return err
 	}
 
-	c.Bootstrapped = true
+	c.bootstrapped = true
 
 	return nil
 }

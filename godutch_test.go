@@ -9,11 +9,15 @@ import (
 )
 
 func TestOnboard(t *testing.T) {
-	p := NewPanamax()
-	c := mockBootstrappedContainer(t, "TestOnboard")
+	var err error
+	var g *GoDutch
+	var c *Container
+
+	g = NewGoDutch()
+	c = mockBootstrappedContainer(t, "TestOnboard")
 
 	Convey("Should be able to Onboard a Container", t, func() {
-		err := p.Onboard(c)
+		err = g.Onboard(c)
 		So(err, ShouldEqual, nil)
 		c.Shutdown()
 	})
@@ -22,24 +26,24 @@ func TestOnboard(t *testing.T) {
 func TestExecuteCheck(t *testing.T) {
 	var err error
 	var resp *Response
-	var p *Panamax
+	var g *GoDutch
 	var c *Container
 
-	p = NewPanamax()
+	g = NewGoDutch()
 	c = mockContainer(t, "TestExecuteCheck")
 
-	p.RegisterService(c)
-	go p.ServeBackground()
+	g.Register(c)
+	go g.ServeBackground()
 
 	Convey("Should be able to Onboard a Container.", t, func() {
-		err = p.Onboard(c)
+		err = g.Onboard(c)
 		So(err, ShouldEqual, nil)
 	})
 
-	for checkName, _ := range p.Checks {
+	for _, checkName := range c.ComponentChecks() {
 		log.Println("TEST checkName:", checkName)
 		Convey(fmt.Sprintf("Should be able to Execute '%s'", checkName), t, func() {
-			resp, err = p.Execute(checkName, []string{})
+			resp, err = g.Execute(checkName, []string{})
 			log.Printf("TEST Response: %#v", resp)
 			So(err, ShouldEqual, nil)
 			So(resp.Name, ShouldEqual, checkName)
@@ -47,11 +51,11 @@ func TestExecuteCheck(t *testing.T) {
 	}
 
 	Convey("Should be able to offboard a container", t, func() {
-		err = p.Offboard("TestExecuteCheck")
+		err = g.Offboard("TestExecuteCheck")
 		So(err, ShouldEqual, nil)
 	})
 
-	p.Stop()
+	g.Stop()
 
 }
 

@@ -71,6 +71,7 @@ func TestPacketExtract(t *testing.T) {
 
 	Convey("Should be able to parse the buffer into commands", t, func() {
 		cmd, args, err = pkt.ExtractCmdAndArgsFromBuffer()
+
 		So(err, ShouldEqual, nil)
 		So(cmd, ShouldEqual, "_NRPE_CHECK")
 		So(args, ShouldBeEmpty)
