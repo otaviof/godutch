@@ -14,37 +14,44 @@ import (
 // Holds INI configuration file contents mapped into Config data struture.
 //
 type Config struct {
-	GoDutch struct {
-		UseUnixSockets bool     `ini:"use_unix_sockets"`
-		ContainersDir  string   `ini:"containers_dir"`
-		SocketsDir     string   `ini:"sockets_dir"`
-		TCPPortsRange  string   `ini:"tcp_ports_range"`
-		Arr1           []string `ini:"arr1"`
-	}
-
-	NRPE struct {
-		Enabled   bool   `ini:"enabled"`
-		SSL       bool   `ini:"ssl"`
-		Interface string `ini:"interface"`
-		Port      int    `ini:"port"`
-	}
-
-	NCSA struct {
-		Enabled bool   `ini:"enabled"`
-		Address string `ini:"address"`
-		Port    int    `ini:"port"`
-	}
-
-	CollectD struct {
-		Enabled bool   `ini:"enabled"`
-		Address string `ini:"address"`
-		Port    int    `ini:"port"`
-	}
-
+	GoDutch    GoDutchConfig
+	NRPE       NRPEConfig
+	NCSA       NCSAConfig
+	CollectD   CollectDConfig
 	Containers map[string]*ContainerConfig
 }
 
-// Auxiliary type to help on composing a new ContainerConfig entry.
+//
+// Auxiliary types to compose configuration, and to be imported and used
+// further on the services implementation.
+//
+
+type GoDutchConfig struct {
+	UseUnixSockets bool   `ini:"use_unix_sockets"`
+	ContainersDir  string `ini:"containers_dir"`
+	SocketsDir     string `ini:"sockets_dir"`
+	TCPPortsRange  string `ini:"tcp_ports_range"`
+}
+
+type NRPEConfig struct {
+	Enabled   bool   `ini:"enabled"`
+	SSL       bool   `ini:"ssl"`
+	Interface string `ini:"interface"`
+	Port      int    `ini:"port"`
+}
+
+type NCSAConfig struct {
+	Enabled bool   `ini:"enabled"`
+	Address string `ini:"address"`
+	Port    int    `ini:"port"`
+}
+
+type CollectDConfig struct {
+	Enabled bool   `ini:"enabled"`
+	Address string `ini:"address"`
+	Port    int    `ini:"port"`
+}
+
 type ContainerConfig struct {
 	Name    string   `ini:"name"`
 	Enabled bool     `ini:"enabled"`
