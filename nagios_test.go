@@ -7,7 +7,13 @@ import (
 )
 
 func TestPacketExtract(t *testing.T) {
-	packet_buffer := []byte{
+	var err error
+	var pkt *NRPEPacket
+	var buffer []byte
+	var cmd string
+	var args []string
+
+	buffer = []byte{
 		0, 2, 0, 1, 45, 252, 176, 209, 93, 89, 95, 78, 82, 80, 69, 95, 67, 72,
 		69, 67, 75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -56,11 +62,18 @@ func TestPacketExtract(t *testing.T) {
 		0, 0, 0, 0, 0, 49, 94}
 
 	// instanciating the nrpe class to unassemble mock packet buffer
-	pkt, err := NewNRPEPacket(packet_buffer, 1036)
+	pkt, err = NewNRPEPacket(buffer, NRPE_PACKET_SIZE)
 
 	Convey("Should extract a NRPE packet from C bytes", t, func() {
 		So(err, ShouldEqual, nil)
 		So(pkt.Buffer, ShouldEqual, "_NRPE_CHECK")
+	})
+
+	Convey("Should be able to parse the buffer into commands", t, func() {
+		cmd, args, err = pkt.ExtractCmdAndArgsFromBuffer()
+		So(err, ShouldEqual, nil)
+		So(cmd, ShouldEqual, "_NRPE_CHECK")
+		So(args, ShouldBeEmpty)
 	})
 }
 
