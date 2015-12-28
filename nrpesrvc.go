@@ -6,22 +6,27 @@ import (
 	"net"
 )
 
+//
+// Defines the NRPE service, which listens on configured interface and it's
+// able to create a NRPEPacket object with connection's payload.
+//
 type NRPESrvc struct {
 	listener net.Listener
 	cfg      *NRPEConfig
 	p        *Panamax
 }
 
+// Creates a new object from NRPESrvc.
 func NewNRPESrvc(cfg *NRPEConfig, p *Panamax) (*NRPESrvc, error) {
 	var err error
 	var ns *NRPESrvc
-	ns = &NRPESrvc{
-		cfg: cfg,
-		p:   p,
-	}
+	// initializing object with parameter informed items.
+	ns = &NRPESrvc{cfg: cfg, p: p}
 	return ns, err
 }
 
+// Start listening on network interface and port, asyncronously will spawn a
+// connection handler, when this event happen.
 func (ns *NRPESrvc) Serve() {
 	var err error
 	var listenOn string = fmt.Sprintf("%s:%d", ns.cfg.Interface, ns.cfg.Port)
@@ -42,6 +47,9 @@ func (ns *NRPESrvc) Serve() {
 	}
 }
 
+// Takes a network connection and extract it's buffer, passing along to create
+// a NRPEPacket, from which we can extract the actual command and it's
+// arguments.
 func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 	var err error
 	var n int
@@ -76,7 +84,9 @@ func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 		return
 	}
 
-	log.Printf("from NRPE Response: %#v", resp)
+	// TODO
+	// * Write response back on the socket;
+	log.Printf("NRPE (to be) Response: %#v", resp)
 }
 
 // Extract command and arguments from the packet buffer and compose a call
@@ -95,6 +105,8 @@ func (ns *NRPESrvc) panamaxExec(cmd string, args []string) (*Response, error) {
 	return resp, nil
 }
 
+// Stop the service execution, which here for NRPE service means closing the
+// network listener.
 func (ns *NRPESrvc) Stop() {
 	var err error
 	if err = ns.listener.Close(); err != nil {
