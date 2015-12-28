@@ -64,18 +64,15 @@ func (ns *NRPESrvc) Shutdown() error {
 	return nil
 }
 
-// Check if the port is available for listening on.
+// Double check if desired interface and port is already in use.
 func (ns *NRPESrvc) Bootstrap() error {
 	var err error
 	var conn net.Conn
-
 	if conn, err = net.Dial("tcp", ns.listenOn); err != nil {
-		// we expect to have error here, it means that the port is available
 		return nil
 	}
 	defer conn.Close()
-
-	err = errors.New("Interface (and port) not available: " + ns.listenOn)
+	err = errors.New("Interface is already in use: " + ns.listenOn)
 	return err
 }
 
@@ -94,7 +91,7 @@ func (ns *NRPESrvc) Serve() {
 
 	for {
 		if conn, err = ns.listener.Accept(); err != nil {
-			log.Fatalln("Error during accept connection:", err)
+			log.Println("Error during accept connection:", err)
 			return
 		}
 		go ns.handleConnection(conn)
@@ -117,7 +114,6 @@ func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 		log.Fatalln("Error reading from connection:", err)
 		return
 	}
-	defer conn.Close()
 	log.Println("Bytes read from connection:", n)
 
 	// transforming payload on a NRPE packet
@@ -134,13 +130,23 @@ func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 
 	// using buffer to exectract command and it's argument
 	if resp, err = ns.godutchExec(cmd, args); err != nil {
-		log.Fatalln("Error on godutch buffer exec:", err)
+		log.Println("[ERROR] on godutch buffer exec:", err)
+		resp = &Response{
+			Name:   cmd,
+			Status: STATE_UNKNOWN,
+			Stdout: []string{fmt.Sprintf("[ERROR] %s", err)},
+		}
+	}
+
+	// writing back to the connection
+	if _, err = conn.Write(NRPEPacketFromResponse(resp)); err != nil {
+		log.Fatalln("Error on writing response:", err)
 		return
 	}
 
-	// TODO
-	// * Write response back on the socket;
-	log.Printf("NRPE (to be) Response: %#v", resp)
+	if err = conn.Close(); err != nil {
+		log.Println("Error on closing connection:", err)
+	}
 }
 
 // Extract command and arguments from the packet buffer and compose a call
@@ -148,14 +154,9 @@ func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 func (ns *NRPESrvc) godutchExec(cmd string, args []string) (*Response, error) {
 	var err error
 	var resp *Response
-
-	log.Printf("About to GoDutch Execute: cmd: '%s', args: '%s'", cmd, args)
-
 	if resp, err = ns.g.Execute(cmd, args); err != nil {
-		log.Fatalln("Error on GoDutch.Execute:", err)
 		return nil, err
 	}
-
 	return resp, nil
 }
 
@@ -164,7 +165,7 @@ func (ns *NRPESrvc) godutchExec(cmd string, args []string) (*Response, error) {
 func (ns *NRPESrvc) Stop() {
 	var err error
 	if err = ns.listener.Close(); err != nil {
-		log.Fatalln("Error on closing listener:", err)
+		log.Println("Error on closing listener:", err)
 	}
 }
 
