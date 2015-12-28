@@ -111,6 +111,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"unsafe"
 )
 
@@ -207,6 +208,35 @@ func (pkt *NRPEPacket) validateCRC32() error {
 	}
 
 	return nil
+}
+
+// Separates the command and arguments from a packet's Buffer.
+func (pkt *NRPEPacket) ExtractCmdAndArgsFromBuffer() (string, []string, error) {
+	var err error
+	var buffer []string
+	var cmd string
+	var args []string = []string{}
+
+	// splitting informed buffer based on exclamation marks, defualt for NRPE
+	buffer = strings.Split(pkt.Buffer, "!")
+	log.Println("Extracted from NPRE Packet buffer:", buffer[:])
+
+	// command will always be the first option, a nagios check name
+	cmd = fmt.Sprintf("%s", buffer[0])
+
+	// checking how many items we have, at least one to compose a command
+	switch len(buffer) {
+	case 0:
+		err = errors.New("Can't extract command from buffer:" + pkt.Buffer)
+		return "", nil, err
+	case 1:
+		// command is already extracted
+	default:
+		cmd = fmt.Sprintf("%s", buffer[0])
+		args = buffer[1:]
+	}
+
+	return cmd, args, nil
 }
 
 /* EOF */

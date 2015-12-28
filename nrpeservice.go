@@ -1,30 +1,28 @@
 package godutch
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
-	"strings"
 )
 
-type NRPEService struct {
+type NRPESrvc struct {
 	listener net.Listener
 	cfg      *NRPEConfig
 	p        *Panamax
 }
 
-func NewNRPEService(cfg *NRPEConfig, p *Panamax) (*NRPEService, error) {
+func NewNRPESrvc(cfg *NRPEConfig, p *Panamax) (*NRPESrvc, error) {
 	var err error
-	var ns *NRPEService
-	ns = &NRPEService{
+	var ns *NRPESrvc
+	ns = &NRPESrvc{
 		cfg: cfg,
 		p:   p,
 	}
 	return ns, err
 }
 
-func (ns *NRPEService) Serve() {
+func (ns *NRPESrvc) Serve() {
 	var err error
 	var listenOn string = fmt.Sprintf("%s:%d", ns.cfg.Interface, ns.cfg.Port)
 	var conn net.Conn
@@ -44,11 +42,13 @@ func (ns *NRPEService) Serve() {
 	}
 }
 
-func (ns *NRPEService) handleConnection(conn net.Conn) {
+func (ns *NRPESrvc) handleConnection(conn net.Conn) {
 	var err error
 	var n int
 	var buf []byte = make([]byte, NRPE_PACKET_SIZE)
 	var pkt *NRPEPacket
+	var cmd string
+	var args []string = []string{}
 	var resp *Response
 
 	if n, err = conn.Read(buf); n == 0 || err != nil {
@@ -65,8 +65,13 @@ func (ns *NRPEService) handleConnection(conn net.Conn) {
 		return
 	}
 
+	if cmd, args, err = pkt.ExtractCmdAndArgsFromBuffer(); err != nil {
+		log.Fatalln("Error on extracting comamnd from buffer:", err)
+		return
+	}
+
 	// using buffer to exectract command and it's argument
-	if resp, err = ns.panamaxExecute(pkt.Buffer); err != nil {
+	if resp, err = ns.panamaxExec(cmd, args); err != nil {
 		log.Fatalln("Error on panamax buffer exec:", err)
 		return
 	}
@@ -74,38 +79,15 @@ func (ns *NRPEService) handleConnection(conn net.Conn) {
 	log.Printf("from NRPE Response: %#v", resp)
 }
 
-func extractCommandFromBuffer(pktBuffer string) (string, []string, error) {
-	var command string
-	var args []string = []string{}
-
-	// splitting informed buffer based on exclamation marks, defualt for NRPE
-	buffer = strings.Split(pktBuffer, "!")
-	log.Println("Extracted from NPRE Packet buffer:", buffer[:])
-
-	// checking how many items we have, at least one to compose a command
-	switch len(buffer) {
-	case 0:
-		err = errors.New("Can't extract command from buffer:" + pktBuffer)
-		return nil, err
-	case 1:
-		command = fmt.Sprintf("%s", buffer[0])
-	default:
-		command = fmt.Sprintf("%s", buffer[0])
-		args = buffer[1:]
-	}
-}
-
 // Extract command and arguments from the packet buffer and compose a call
 // towards Panamax.
-func (ns *NRPEService) panamaxExecute(command string) (*Response, error) {
+func (ns *NRPESrvc) panamaxExec(cmd string, args []string) (*Response, error) {
 	var err error
-	var buffer []string
 	var resp *Response
 
-	log.Println("Panamax Execute with command: '", command, "', args:", args)
+	log.Printf("About to Panamax Execute: cmd: '%s', args: '%s'", cmd, args)
 
-	// redirecting request towards Panamax
-	if resp, err = ns.p.Execute(command, args); err != nil {
+	if resp, err = ns.p.Execute(cmd, args); err != nil {
 		log.Fatalln("Error on Panamax.Execute:", err)
 		return nil, err
 	}
@@ -113,8 +95,11 @@ func (ns *NRPEService) panamaxExecute(command string) (*Response, error) {
 	return resp, nil
 }
 
-func (ns *NRPEService) Stop() {
-	return
+func (ns *NRPESrvc) Stop() {
+	var err error
+	if err = ns.listener.Close(); err != nil {
+		log.Fatalln("Error on closing listener:", err)
+	}
 }
 
 /* EOF */

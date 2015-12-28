@@ -7,17 +7,17 @@ import (
 	"testing"
 )
 
-func TestNewNRPEService(t *testing.T) {
+func TestNewNRPESrvc(t *testing.T) {
 	var err error
 	var cfg *Config
-	var ns *NRPEService
+	var ns *NRPESrvc
 	var resp *Response
 
 	p := NewPanamax()
-	c := mockContainer(t, "TestNewNRPEService")
+	c := mockContainer(t, "TestNewNRPESrvc")
 
 	cfg, _ = NewConfig("__etc/godutch/godutch.ini")
-	ns, err = NewNRPEService(&cfg.NRPE, p)
+	ns, err = NewNRPESrvc(&cfg.NRPE, p)
 
 	p.Add(ns)
 	p.RegisterService(c)
@@ -32,8 +32,6 @@ func TestNewNRPEService(t *testing.T) {
 		log.Printf("TEST Response: %#v", resp)
 		log.Println("Checks: ", p.Checks)
 	})
-
-	p.Stop()
 }
 
 /* EOF */
