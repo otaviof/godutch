@@ -229,8 +229,8 @@ func (g *GoDutch) Execute(cmd string, args []string) (*Response, error) {
 	}
 
 	if resp, err = c.Execute(req); err != nil {
-		log.Fatalln("On request:", string(req[:]))
-		log.Fatalln("Error on Execute '", cmd, "':", err)
+		log.Println("On request:", string(req[:]))
+		log.Println("Error on Execute '", cmd, "':", err)
 		return nil, err
 	}
 

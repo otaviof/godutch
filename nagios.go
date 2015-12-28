@@ -146,6 +146,52 @@ type NRPEPacket struct {
 	size    int
 }
 
+var cIEEETable *C.ulong = C.generate_crc32_table()
+
+// Transforms a normal Response object back into a NRPE Packet, with proper
+// flags to be considered a response.
+func NRPEPacketFromResponse(resp *Response) []byte {
+	var cPkt *C.packet
+	var cast *C.char
+	var n int
+	var bytevalue byte
+	var cbytes []byte = make([]byte, NRPE_PACKET_SIZE)
+	// auxiliary local type to reflect a NRPE type of packet with appropriated
+	// Go types and C compatible naming
+	var goPkt struct {
+		packet_version int16
+		packet_type    int16
+		crc32_value    uint32
+		result_code    int16
+		buffer         [1024]int8
+		pad_cgo_0      [2]byte
+	}
+
+	// initial type-casting from Go to C
+	goPkt.packet_version = (int16)(C.htons(C.uint16_t(NRPE_PACKET_VERSION_2)))
+	goPkt.packet_type = (int16)(C.htons(C.uint16_t(NRPE_PACKET_RESPONSE)))
+	goPkt.result_code = (int16)(C.htons(C.uint16_t(resp.Status)))
+	goPkt.crc32_value = (uint32)(0)
+
+	for n, bytevalue = range []byte(strings.Join(resp.Stdout, " ")) {
+		goPkt.buffer[n] = int8(bytevalue)
+	}
+
+	// adding CRC32 signature
+	cPkt = (*C.packet)(unsafe.Pointer(&goPkt))
+	goPkt.crc32_value = uint32(
+		C.htonl((C.uint32_t)(C.calc_packet_crc32(cPkt, cIEEETable))))
+
+	// casting back to original formats in order to carry CRC32
+	cPkt = (*C.packet)(unsafe.Pointer(&goPkt))
+	cast = (*C.char)(unsafe.Pointer(cPkt))
+
+	// final format is bytes
+	cbytes = C.GoBytes(unsafe.Pointer(cast), NRPE_PACKET_SIZE)
+
+	return cbytes
+}
+
 // Creates and validate a NRPE packet, using c bytes input.
 func NewNRPEPacket(cbytes []byte, size int) (*NRPEPacket, error) {
 	var err error
@@ -159,6 +205,7 @@ func NewNRPEPacket(cbytes []byte, size int) (*NRPEPacket, error) {
 	// bootstraping C struct from informed bytes
 	pkt.cbytesIntoStruct()
 
+	log.Printf("Recived Packet: %d", pkt.cPacket.packet_version)
 	if err = pkt.validateCRC32(); err != nil {
 		log.Fatalln("NRPE Packet's CRC32 does not match:", err)
 		return nil, err
@@ -199,7 +246,6 @@ func (pkt *NRPEPacket) checkPacketSize() error {
 // ulong are cast into uint32 type.
 func (pkt *NRPEPacket) validateCRC32() error {
 	var err error
-	var cIEEETable *C.ulong = C.generate_crc32_table()
 	var crc32 uint32 = (uint32)(C.calc_packet_crc32(pkt.cPacket, cIEEETable))
 
 	if pkt.CRC32 != crc32 {
@@ -210,7 +256,7 @@ func (pkt *NRPEPacket) validateCRC32() error {
 	return nil
 }
 
-// Separates the command and arguments from a packet's Buffer.
+// Separates the command and arguments from a packet's buffer.
 func (pkt *NRPEPacket) ExtractCmdAndArgsFromBuffer() (string, []string, error) {
 	var err error
 	var buffer []string
