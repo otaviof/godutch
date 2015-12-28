@@ -8,13 +8,13 @@ import (
 	"testing"
 )
 
-func TestOnboard(t *testing.T) {
+func TestOnboardContainer(t *testing.T) {
 	var err error
 	var g *GoDutch
 	var c *Container
 
 	g = NewGoDutch()
-	c = mockBootstrappedContainer(t, "TestOnboard")
+	c = mockBootstrappedContainer(t, "TestOnboardContainer")
 
 	Convey("Should be able to Onboard a Container", t, func() {
 		err = g.Onboard(c)
@@ -23,14 +23,17 @@ func TestOnboard(t *testing.T) {
 	})
 }
 
-func TestExecuteCheck(t *testing.T) {
+// Test the execution of every check known, from GoDutch Execute method, which
+// calls other method down the stack.
+func TestExecuteChecks(t *testing.T) {
 	var err error
-	var resp *Response
 	var g *GoDutch
 	var c *Container
+	var containerName string = "TestExecuteChecks"
+	var resp *Response
 
 	g = NewGoDutch()
-	c = mockContainer(t, "TestExecuteCheck")
+	c = mockContainer(t, containerName)
 
 	g.Register(c)
 	go g.ServeBackground()
@@ -40,6 +43,7 @@ func TestExecuteCheck(t *testing.T) {
 		So(err, ShouldEqual, nil)
 	})
 
+	// caling every known check, making sure there's response
 	for _, checkName := range c.ComponentChecks() {
 		log.Println("TEST checkName:", checkName)
 		Convey(fmt.Sprintf("Should be able to Execute '%s'", checkName), t, func() {
@@ -51,12 +55,11 @@ func TestExecuteCheck(t *testing.T) {
 	}
 
 	Convey("Should be able to offboard a container", t, func() {
-		err = g.Offboard("TestExecuteCheck")
+		err = g.Offboard(containerName)
 		So(err, ShouldEqual, nil)
 	})
 
-	g.Stop()
-
+	defer g.Stop()
 }
 
 /* EOF */

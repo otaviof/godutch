@@ -89,7 +89,7 @@ func (bg *BgCmd) spawnCmd() error {
 func (bg *BgCmd) Stop() {
 	var err error
 	if err = bg.Cmd.Process.Kill(); err != nil {
-		log.Fatalln("Error on kill: ", err)
+		log.Println("Error on kill: ", err)
 	}
 }
 
