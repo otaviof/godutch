@@ -13,9 +13,9 @@ import (
 //
 type Panamax struct {
 	*suture.Supervisor
-	Containers   map[string]*Container
-	Checks       map[string]string
-	ServiceToken map[string]suture.ServiceToken
+	Containers    map[string]*Container
+	Checks        map[string]string
+	ServiceTokens map[string]suture.ServiceToken
 }
 
 // Creates a new Panamax instance, loading a Supervisor instance and allocating
@@ -25,12 +25,12 @@ func NewPanamax() *Panamax {
 	p = &Panamax{
 		Supervisor: suture.New("Panamax", suture.Spec{
 			Log: func(line string) {
-				log.Println("Suture:", line)
+				log.Println("SUTURE:", line)
 			},
 		}),
-		Containers:   make(map[string]*Container),
-		Checks:       make(map[string]string),
-		ServiceToken: make(map[string]suture.ServiceToken),
+		Containers:    make(map[string]*Container),
+		Checks:        make(map[string]string),
+		ServiceTokens: make(map[string]suture.ServiceToken),
 	}
 	return p
 }
@@ -44,6 +44,7 @@ func (p *Panamax) Onboard(c *Container) error {
 
 	// bootstrapping the container if it's not loaded yet
 	if !c.Bootstrapped {
+		log.Println("Container is not bootstrapped yet.")
 		if err = c.Bootstrap(); err != nil {
 			return err
 		}
@@ -60,7 +61,7 @@ func (p *Panamax) Onboard(c *Container) error {
 
 	p.Containers[c.Name] = c
 	for _, checkName = range c.Checks {
-		log.Println("Loading check:", checkName)
+		log.Printf("** Loading check: '%s' (%s)", checkName, c.Name)
 		p.Checks[checkName] = c.Name
 	}
 
@@ -70,7 +71,7 @@ func (p *Panamax) Onboard(c *Container) error {
 // Adding background process to the local Supervisor, saving the unique
 // service-id into the local registry.
 func (p *Panamax) RegisterService(c *Container) {
-	p.ServiceToken[c.Name] = p.Add(c.Bg)
+	p.ServiceTokens[c.Name] = p.Add(c.Bg)
 }
 
 // Removes a Container from Panamax, where the only input is the container name.
@@ -87,11 +88,11 @@ func (p *Panamax) Offboard(containerName string) error {
 	}
 
 	// removing container background process from supervisor
-	p.Remove(p.ServiceToken[containerName])
+	p.Remove(p.ServiceTokens[containerName])
 
 	// cleaning up container and checks
 	delete(p.Containers, containerName)
-	delete(p.ServiceToken, containerName)
+	delete(p.ServiceTokens, containerName)
 	for _, checkName = range c.Checks {
 		delete(p.Checks, checkName)
 	}
@@ -113,11 +114,16 @@ func (p *Panamax) Execute(cmd string, args []string) (*Response, error) {
 	var resp *Response
 	var okay bool
 
-	if containerName, okay = p.Checks[cmd]; okay {
-		log.Println("Container:", containerName, ", Command:", cmd)
-		c = p.Containers[containerName]
-	} else {
+	log.Printf("Panamax about to execute cmd: '%s'", cmd)
+
+	if containerName, okay = p.Checks[cmd]; !okay {
 		err = errors.New("Can't find check '" + cmd + "' on any container.")
+		return nil, err
+	}
+
+	log.Println("Container:", containerName, ", Command:", cmd)
+	if c, okay = p.Containers[containerName]; !okay {
+		err = errors.New("Can't find container: " + containerName)
 		return nil, err
 	}
 
