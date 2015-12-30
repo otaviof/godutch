@@ -44,6 +44,11 @@ func NewGoDutch() *GoDutch {
 			Log: func(line string) {
 				log.Println("SUTURE:", line)
 			},
+			// how resilient this supervisor should be
+			FailureDecay:     1,
+			FailureThreshold: 11,
+			FailureBackoff:   1,
+			Timeout:          3,
 		}),
 		Containers: make(map[string]component),
 		Checks:     make(map[string]string),
