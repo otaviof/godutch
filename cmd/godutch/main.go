@@ -1,3 +1,15 @@
+/*
+
+Creates a GoDutch daemon based on command-line informed configuration. Good
+proof of concept for the application server elements, like auto-healing when a
+Container dies, and a very interesting performance, intiially.
+
+Usage:
+
+ $ go build -a -o bin/godutch cmd/godutch
+ $ ./bin/godutch -config-path __etc/godutch/godutch.ini
+
+*/
 package main
 
 import (
@@ -19,7 +31,7 @@ type Self struct {
 	ns         *godutch.NRPESrvc
 }
 
-// Reads the configuration file and loads into itself.
+// Reads the configuration file and loads into itself, base step.
 func (self *Self) loadConfig() {
 	var err error
 	if self.cfg, err = godutch.NewConfig(self.cfgPath); err != nil {
@@ -44,16 +56,18 @@ func (self *Self) loadContainers() {
 
 	for name, cCfg = range self.cfg.Containers {
 		log.Printf("Loading container: '%s'", name)
+
 		if !cCfg.Enabled {
 			log.Println("-- skipping disabled container --")
 			continue
 		}
 
+		// spawn a new container
 		if c, err = godutch.NewContainer(name, cCfg.Command); err != nil {
 			log.Fatalln("NewContainer error:", err)
 		}
 
-		// keeping the container pointer for the onboard process
+		// keeping the container pointer for the onboard step
 		self.containers[name] = c
 		self.g.Register(c)
 	}
@@ -69,7 +83,7 @@ func (self *Self) onboardContainers() {
 	for name, c = range self.containers {
 		log.Printf("Onboarding container: '%s'", name)
 		if err = self.g.Onboard(c); err != nil {
-			log.Println("Error on onboarding:", err)
+			log.Fatalln("Error on onboarding:", err)
 		}
 	}
 }
@@ -84,7 +98,7 @@ func (self *Self) loadNRPEService() {
 }
 
 // Add the NRPE service into the Supervisor, to start listening and executing
-// checks, linkted by the informed GoDutch pointer.
+// checks, linked by the informed GoDutch pointer.
 func (self *Self) onboardNRPEService() {
 	var err error
 	if err = self.g.Onboard(self.ns); err != nil {
