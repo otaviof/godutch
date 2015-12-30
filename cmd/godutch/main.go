@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+//
+// Represents this command-line utility, with the necessary objects and data to
+// boostrap a GoDutch Server.
+//
 type Self struct {
 	cfgPath    string
 	cfg        *godutch.Config
@@ -15,6 +19,7 @@ type Self struct {
 	ns         *godutch.NRPESrvc
 }
 
+// Reads the configuration file and loads into itself.
 func (self *Self) loadConfig() {
 	var err error
 	if self.cfg, err = godutch.NewConfig(self.cfgPath); err != nil {
@@ -22,10 +27,13 @@ func (self *Self) loadConfig() {
 	}
 }
 
+// Loads GoDutch.
 func (self *Self) loadGoDutch() {
 	self.g = godutch.NewGoDutch()
 }
 
+// Using configuration will load the containers and register them within the
+// Supervisor. Containers pointers are kept for Onboarding step.
 func (self *Self) loadContainers() {
 	var err error
 	var name string
@@ -51,6 +59,8 @@ func (self *Self) loadContainers() {
 	}
 }
 
+// Loads the containers into GoDutch, by setting up socket communication and
+// taking inventory of what are the available checks per container.
 func (self *Self) onboardContainers() {
 	var err error
 	var name string
@@ -64,6 +74,7 @@ func (self *Self) onboardContainers() {
 	}
 }
 
+// Load the NRPE service interface.
 func (self *Self) loadNRPEService() {
 	var err error
 	if self.ns, err = godutch.NewNRPESrvc(&self.cfg.NRPE, self.g); err != nil {
@@ -72,6 +83,8 @@ func (self *Self) loadNRPEService() {
 	self.g.Register(self.ns)
 }
 
+// Add the NRPE service into the Supervisor, to start listening and executing
+// checks, linkted by the informed GoDutch pointer.
 func (self *Self) onboardNRPEService() {
 	var err error
 	if err = self.g.Onboard(self.ns); err != nil {
@@ -79,8 +92,10 @@ func (self *Self) onboardNRPEService() {
 	}
 }
 
+//
+// Main
+//
 func main() {
-	// var err error
 	var configFilePath string
 	var self *Self
 
@@ -97,11 +112,15 @@ func main() {
 	self.loadGoDutch()
 	self.loadNRPEService()
 	self.loadContainers()
+
 	go func() {
+		// actions bellow suppose to happen after the Supervisor is loaded,
+		// although, there's no confirmation of that state in place, yet.
 		time.Sleep(1e9)
 		self.onboardContainers()
 		self.onboardNRPEService()
 	}()
+
 	self.g.Serve()
 }
 
