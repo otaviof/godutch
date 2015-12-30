@@ -2,7 +2,6 @@ require 'godutch'
 
 module TestGoDutch
   include GoDutch::Reactor
-  extend self
 
   def check_test
     success("Everything is o'right.")
@@ -10,12 +9,9 @@ module TestGoDutch
     return 'check_test output'
   end
 
-  def dummy_method
-    puts 'I should never be called.'
-  end
-
   def check_second_test
-    puts 'Foo'
+    critical("Here stuff is getting hard!")
+    return 'something else'
   end
 end
 
