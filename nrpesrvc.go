@@ -1,7 +1,6 @@
 package godutch
 
 import (
-	"errors"
 	"fmt"
 	"github.com/thejerf/suture"
 	"log"
@@ -64,16 +63,8 @@ func (ns *NRPESrvc) Shutdown() error {
 	return nil
 }
 
-// Double check if desired interface and port is already in use.
 func (ns *NRPESrvc) Bootstrap() error {
-	var err error
-	var conn net.Conn
-	if conn, err = net.Dial("tcp", ns.listenOn); err != nil {
-		return nil
-	}
-	defer conn.Close()
-	err = errors.New("Interface is already in use: " + ns.listenOn)
-	return err
+	return nil
 }
 
 // Start listening on network interface and port, asyncronously will spawn a

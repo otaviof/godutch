@@ -150,7 +150,7 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 
 	log.Println("Sending request:", string(req[:]))
 	if _, err = c.socket.Write(req); err != nil {
-		log.Fatalln("Socket WRITE error:", err)
+		log.Println("Socket WRITE error:", err)
 		return nil, err
 	}
 
@@ -175,7 +175,7 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 			log.Printf("Response: %#v", resp)
 			return resp, nil
 		case err = <-errorCh:
-			log.Fatalln("Socket reading error:", err)
+			log.Println("Socket reading error:", err)
 			return nil, err
 		}
 	}
@@ -189,7 +189,7 @@ func (c *Container) socketReader(respCh chan []byte, errorCh chan error) {
 	for {
 		_, err := io.Copy(&buf, c.socket)
 		if err != nil {
-			log.Fatalln("Socket read error:", err)
+			log.Println("Socket read error:", err)
 			errorCh <- err
 			return
 		}

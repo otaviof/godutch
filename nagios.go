@@ -1,10 +1,11 @@
 package godutch
 
 /*
-// ---------------------------------------------------------------------------
+//
 // Skeleton data structure used by NRPE query/response packages, code is
 // inspired on their original source code (version 2.15), which can be found
 // on Source-Forge:
+//
 //     http://downloads.sourceforge.net/project/nagios/nrpe-2.x/nrpe-2.15
 //
 
@@ -13,6 +14,7 @@ package godutch
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 // maximum size of a query/response buffer
 #define MAX_PACKETBUFFER_LENGTH	1024
@@ -116,24 +118,21 @@ import (
 )
 
 const (
-	NRPE_PACKET_VERSION_3 = 3
-	NRPE_PACKET_VERSION_2 = 2
-	NRPE_PACKET_VERSION_1 = 1
-	NRPE_PACKET_QUERY     = 1
-	NRPE_PACKET_RESPONSE  = 2
-	NRPE_PACKET_SIZE      = 1036
-	NRPE_HELLO_COMMAND    = "_NRPE_CHECK"
-
-	MAX_PACKETBUFFER_LENGTH = 1024
-	MAX_COMMAND_ARGUMENTS   = 16
-
+	NRPE_PACKET_VERSION_3      = 3
+	NRPE_PACKET_VERSION_2      = 2
+	NRPE_PACKET_VERSION_1      = 1
+	NRPE_PACKET_QUERY          = 1
+	NRPE_PACKET_RESPONSE       = 2
+	NRPE_PACKET_SIZE           = 1036
+	NRPE_HELLO_COMMAND         = "_NRPE_CHECK"
+	MAX_PACKETBUFFER_LENGTH    = 1024
+	MAX_COMMAND_ARGUMENTS      = 16
 	DEFAULT_SOCKET_TIMEOUT     = 10
 	DEFAULT_CONNECTION_TIMEOUT = 300
-
-	STATE_UNKNOWN  = 3
-	STATE_CRITICAL = 2
-	STATE_WARNING  = 1
-	STATE_OK       = 0
+	STATE_UNKNOWN              = 3
+	STATE_CRITICAL             = 2
+	STATE_WARNING              = 1
+	STATE_OK                   = 0
 )
 
 type NRPEPacket struct {
