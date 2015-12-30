@@ -7,31 +7,31 @@ import (
 )
 
 //
-// Interface to link different pieces of GoDutch. On which a Container will
-// go though different onboarding steps than a Service.
+// Interface to link different components of GoDutch.
 //
-type component interface {
+type Composer interface {
 	Bootstrap() error
 	Shutdown() error
 	Execute(req []byte) (*Response, error)
-	// the "component" methods are the behavior modifier and the object that
-	// will be kept alive in the background, using Suture
-	ComponentName() string
-	ComponentChecks() []string
-	ComponentType() string
-	ComponentObject() suture.Service
+	ComponentInfo() *Component
+}
+
+type Component struct {
+	Name     string
+	Checks   []string
+	Type     string
+	Instance suture.Service
 }
 
 //
-// A Panamax is a world-wide known container cargo vessel. The name is adopted
-// here, a local group of structures to register Containers and inventory their
-// checks, also interfacing the final check execution call.
+// Primary integration point to join to inventory Containers, Service and make
+// it behave as a Supervisor (with Suture's help).
 //
 type GoDutch struct {
 	*suture.Supervisor
-	Containers map[string]component
+	Containers map[string]Composer
 	Checks     map[string]string
-	Services   map[string]component
+	Services   map[string]Composer
 	tokens     map[string]suture.ServiceToken
 }
 
@@ -50,50 +50,48 @@ func NewGoDutch() *GoDutch {
 			FailureBackoff:   1,
 			Timeout:          3,
 		}),
-		Containers: make(map[string]component),
+		Containers: make(map[string]Composer),
 		Checks:     make(map[string]string),
-		Services:   make(map[string]component),
+		Services:   make(map[string]Composer),
 		tokens:     make(map[string]suture.ServiceToken),
 	}
 	return g
 }
 
 // Identify and register the Container's checks into GoDutch.
-func (g *GoDutch) onboardContainer(c component) error {
+func (g *GoDutch) onboardContainer(c Composer) error {
 	var err error
 	var checkName string
-	var name string
-	var checks []string
+	var component *Component = c.ComponentInfo()
 
+	// chance for loading it's process
 	if err = c.Bootstrap(); err != nil {
 		return err
 	}
 
-	// loading check list from method
-	name = c.ComponentName()
-	checks = c.ComponentChecks()
-
+	log.Println("Debug -> checks:", component.Checks)
 	// a container must have at least one check
-	if len(checks) <= 0 {
-		err = errors.New("Container '" + name + "' has no Checks.")
+	if len(component.Checks) <= 0 {
+		err = errors.New("Container '" + component.Name + "' has no Checks.")
 		return err
 	}
 
-	log.Println("Loading container:", name)
-
-	g.Containers[name] = c
-	for _, checkName = range checks {
-		log.Printf("** Loading check: '%s' (%s)", checkName, name)
-		g.Checks[checkName] = name
+	log.Println("Loading container:", component.Name)
+	g.Containers[component.Name] = c
+	for _, checkName = range component.Checks {
+		log.Printf("** Loading check: '%s' (%s)", checkName, component.Name)
+		g.Checks[checkName] = component.Name
 	}
 
 	return nil
 }
 
 // Bootstrap a service, the only step required to onboard a service type.
-func (g *GoDutch) onboardService(c component) error {
+func (g *GoDutch) onboardService(c Composer) error {
 	var err error
-	g.Services[c.ComponentType()] = c
+	var component *Component = c.ComponentInfo()
+
+	g.Services[component.Name] = c
 	if err = c.Bootstrap(); err != nil {
 		return err
 	}
@@ -102,10 +100,11 @@ func (g *GoDutch) onboardService(c component) error {
 
 // Loads a Object implementing GoDutch interface, for Containers, it will load
 // the actual checks, for a service, it will only keep references for Suture.
-func (g *GoDutch) Onboard(c component) error {
+func (g *GoDutch) Onboard(c Composer) error {
 	var err error
+	var component *Component = c.ComponentInfo()
 
-	switch c.ComponentType() {
+	switch component.Type {
 	case "container":
 		if err = g.onboardContainer(c); err != nil {
 			log.Fatalln("Errors on onboarding container:", err)
@@ -117,7 +116,7 @@ func (g *GoDutch) Onboard(c component) error {
 			return err
 		}
 	default:
-		err = errors.New("Component type is not known: " + c.ComponentType())
+		err = errors.New("Component type is not known: " + component.Type)
 		return err
 	}
 
@@ -126,8 +125,9 @@ func (g *GoDutch) Onboard(c component) error {
 
 // Adding background process to the local Supervisor, saving the unique
 // service-id into the local registry.
-func (g *GoDutch) Register(c component) {
-	g.tokens[c.ComponentName()] = g.Add(c.ComponentObject())
+func (g *GoDutch) Register(c Composer) {
+	var component *Component = c.ComponentInfo()
+	g.tokens[component.Name] = g.Add(component.Instance)
 }
 
 // Execute the Offboard of a Container or Service based on it's name.
@@ -142,12 +142,11 @@ func (g *GoDutch) Offboard(name string) error {
 			return err
 		}
 		return nil
-	} else {
-		log.Printf("Offboard: '%s', not found on services!", name)
 	}
 
 	// or it might be container then
 	if err = g.offboardContainer(name); err != nil {
+		log.Fatalln("Error on offboarding a container:", err)
 		return err
 	}
 
@@ -160,15 +159,8 @@ func (g *GoDutch) Offboard(name string) error {
 	return nil
 }
 
-// Does the steps to offload a Service, which implies on calling Shutdown and
-// remove references from Services.
+// Does the steps to offload a Service
 func (g *GoDutch) offboardService(name string) error {
-	/*
-		var err error
-		if err = g.Services[name].Shutdown(); err != nil {
-			log.Fatalln("Error on shutting down container:", err)
-		}
-	*/
 	// presence is already check by Offboard method
 	delete(g.Services, name)
 	return nil
@@ -178,28 +170,24 @@ func (g *GoDutch) offboardService(name string) error {
 // The regarded process will also be shutdown.
 func (g *GoDutch) offboardContainer(name string) error {
 	var err error
-	var c component
+	var c Composer
 	var okay bool = false
 	var checkName string
-	var checks []string
+	var component *Component
 
 	// loading check list from method
-	if c, okay = g.Containers[name]; !okay {
-		err = errors.New("Can't find container '" + name + "'")
+	if c, okay = g.Containers[name]; okay {
+		component = c.ComponentInfo()
+		delete(g.Containers, component.Name)
+		for _, checkName = range component.Checks {
+			delete(g.Checks, checkName)
+		}
+		if err = c.Shutdown(); err != nil {
+			log.Fatalln("Error on shutting down container:", err)
+		}
+	} else {
+		err = errors.New("Can't find container '" + component.Name + "'")
 		return err
-	}
-
-	checks = c.ComponentChecks()
-
-	// cleaning up container and checks
-	delete(g.Containers, name)
-
-	for _, checkName = range checks {
-		delete(g.Checks, checkName)
-	}
-
-	if err = c.Shutdown(); err != nil {
-		log.Fatalln("Error on shutting down container:", err)
 	}
 
 	return nil
@@ -209,7 +197,7 @@ func (g *GoDutch) offboardContainer(name string) error {
 // request carrying command and arguments from this method pameters.
 func (g *GoDutch) Execute(cmd string, args []string) (*Response, error) {
 	var err error
-	var c component
+	var c Composer
 	var containerName string
 	var req []byte
 	var resp *Response

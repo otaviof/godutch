@@ -9,25 +9,30 @@ import (
 	"time"
 )
 
-func TestNewNRPESrvc(t *testing.T) {
+func TestNewNrpeService(t *testing.T) {
 	var err error
 	var cfg *Config
 	var g *GoDutch
-	var ns *NRPESrvc
+	var s *Service
 	var conn net.Conn
 	var listenOn string
 	var n int
 
-	g = NewGoDutch()
 	cfg, _ = NewConfig("__etc/godutch/godutch.ini")
-	listenOn = fmt.Sprintf("%s:%d", cfg.NRPE.Interface, cfg.NRPE.Port)
-	ns, err = NewNRPESrvc(&cfg.NRPE, g)
 
-	g.Register(ns)
+	listenOn = fmt.Sprintf(
+		"%s:%d",
+		cfg.Services["nrpeservice"].Interface,
+		cfg.Services["nrpeservice"].Port)
+
+	g = NewGoDutch()
+	s = NewService(cfg.Services["nrpeservice"], g)
+	g.Register(s)
+
 	go g.ServeBackground()
 
 	Convey("Should be able to Onboard a Service", t, func() {
-		err = g.Onboard(ns)
+		err = g.Onboard(s)
 		So(err, ShouldEqual, nil)
 
 		time.Sleep(1e9)

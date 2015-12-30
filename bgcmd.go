@@ -26,13 +26,13 @@ type BgCmd struct {
 
 // Creates a new BgCmd object, which will prepare socket and os/exec command to
 // run in background, after "Bootstrap".
-func NewBgCmd(name string, command []string) *BgCmd {
+func NewBgCmd(containerCfg *ContainerConfig) *BgCmd {
 	var bg *BgCmd
 
 	bg = &BgCmd{
-		Name:       name,
-		command:    command,
-		SocketPath: fmt.Sprintf("/tmp/godutch-%s.sock", name),
+		Name:       containerCfg.Name,
+		command:    containerCfg.Command,
+		SocketPath: fmt.Sprintf("/tmp/godutch-%s.sock", containerCfg.Name),
 	}
 
 	// socket information, basic commnicaton method with background process

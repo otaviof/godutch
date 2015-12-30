@@ -7,9 +7,10 @@ import (
 	// "path"
 	"strings"
 	"testing"
+	"time"
 )
 
-func mockContainer(t *testing.T, name string) *Container {
+func mockContainer(t *testing.T) *Container {
 	var err error
 	var c *Container
 	var cfg *Config
@@ -18,7 +19,7 @@ func mockContainer(t *testing.T, name string) *Container {
 		panic(err)
 	}
 
-	c, err = NewContainer(name, cfg.Containers["rubycontainer"].Command)
+	c, err = NewContainer(cfg.Containers["rubycontainer"])
 
 	Convey("Should not return errors on NewContainer", t, func() {
 		So(err, ShouldEqual, nil)
@@ -27,13 +28,15 @@ func mockContainer(t *testing.T, name string) *Container {
 	return c
 }
 
-func mockBootstrappedContainer(t *testing.T, name string) *Container {
+func mockBootstrappedContainer(t *testing.T) *Container {
 	var err error
-	var c *Container = mockContainer(t, name)
+	var c *Container = mockContainer(t)
 
 	go c.Bg.Serve()
+	defer c.Bg.Stop()
 
 	Convey("Should be able to bootstrap a container", t, func() {
+		time.Sleep(1e9)
 		err = c.Bootstrap()
 		So(err, ShouldEqual, nil)
 	})
@@ -43,21 +46,28 @@ func mockBootstrappedContainer(t *testing.T, name string) *Container {
 
 func TestNewContainer(t *testing.T) {
 	var err error
+	var containerCfg *ContainerConfig = &ContainerConfig{
+		Name:    "TestNewBgCmd",
+		Command: []string{"sleep", "1"},
+	}
 
 	Convey("Should not return errors on NewContainer", t, func() {
-		_, err = NewContainer("TestNewContainer", []string{"sleep", "1"})
+		_, err = NewContainer(containerCfg)
 		So(err, ShouldEqual, nil)
 	})
 }
 
 func TestBootstrapAndComponentChecks(t *testing.T) {
 	var err error
-	var c *Container
-
-	c = mockBootstrappedContainer(t, "TestBootstrapAndComponentChecks")
+	var c *Container = mockBootstrappedContainer(t)
+	var component *Component = c.ComponentInfo()
 
 	Convey("Should be able to bootstrap a container", t, func() {
-		So(strings.Join(c.ComponentChecks(), "::"), ShouldContainSubstring, "check")
+		So(
+			strings.Join(component.Checks, "::"),
+			ShouldContainSubstring,
+			"check",
+		)
 	})
 
 	Convey("Should be able to shutdown container.", t, func() {

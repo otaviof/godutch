@@ -27,8 +27,8 @@ type Self struct {
 	cfgPath    string
 	cfg        *godutch.Config
 	g          *godutch.GoDutch
+	services   map[string]*godutch.Service
 	containers map[string]*godutch.Container
-	ns         *godutch.NRPESrvc
 }
 
 // Reads the configuration file and loads into itself, base step.
@@ -49,21 +49,21 @@ func (self *Self) loadGoDutch() {
 func (self *Self) loadContainers() {
 	var err error
 	var name string
-	var cCfg *godutch.ContainerConfig
+	var containerCfg *godutch.ContainerConfig
 	var c *godutch.Container
 
 	self.containers = make(map[string]*godutch.Container)
 
-	for name, cCfg = range self.cfg.Containers {
+	for name, containerCfg = range self.cfg.Containers {
 		log.Printf("Loading container: '%s'", name)
 
-		if !cCfg.Enabled {
+		if !containerCfg.Enabled {
 			log.Println("-- skipping disabled container --")
 			continue
 		}
 
 		// spawn a new container
-		if c, err = godutch.NewContainer(name, cCfg.Command); err != nil {
+		if c, err = godutch.NewContainer(containerCfg); err != nil {
 			log.Fatalln("NewContainer error:", err)
 		}
 
@@ -89,12 +89,19 @@ func (self *Self) onboardContainers() {
 }
 
 // Load the NRPE service interface.
-func (self *Self) loadNRPEService() {
+func (self *Self) loadServices() {
 	var err error
-	if self.ns, err = godutch.NewNRPESrvc(&self.cfg.NRPE, self.g); err != nil {
-		log.Fatalln(err)
+	var name string
+	var serviceCfg *godutch.ServiceConfig
+	var s *godutch.Service
+
+	self.services = make(map[string]*godutch.Service)
+
+	for name, serviceCfg = range self.cfg.Services {
+		s = godutch.NewService(serviceCfg, self.g)
+		self.services[name] = s
+		self.g.Register(s)
 	}
-	self.g.Register(self.ns)
 }
 
 // Add the NRPE service into the Supervisor, to start listening and executing

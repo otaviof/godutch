@@ -3,7 +3,6 @@ package godutch
 import (
 	"bytes"
 	"errors"
-	"github.com/thejerf/suture"
 	"io"
 	"log"
 	"net"
@@ -16,52 +15,44 @@ import (
 // communicate using a socket and GoDutch-Protocol, based on JSON.
 //
 type Container struct {
-	Name         string
-	Bg           *BgCmd
-	socket       net.Conn
-	bootstrapped bool
-	Checks       []string
+	Name          string
+	Bg            *BgCmd
+	socket        net.Conn
+	bootstrapped  bool
+	Checks        []string
+	componentInfo Component
 }
 
 // Creates a new Container type, using name and command informed by parameter
 // to spawn a background process via BgCmd, exposed using Bg attribute.
-func NewContainer(name string, command []string) (*Container, error) {
-	var bg *BgCmd
+func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
+	var c *Container = &Container{Name: containerCfg.Name}
 
-	if len(command) < 2 {
+	if len(containerCfg.Command) < 2 {
 		err := errors.New("Informed command is not long enough:" +
-			strings.Join(command, " "))
+			strings.Join(containerCfg.Command, " "))
 		return nil, err
 	}
 
-	log.Println("*** Container:", name, "***")
-	log.Println("Container command:", strings.Join(command, " "))
+	log.Printf("*** Container Name: '%s' ***", containerCfg.Name)
+	log.Printf("Container command: '%s'",
+		strings.Join(containerCfg.Command, " "))
 
-	// expanding the command argument into BgCmd
-	bg = NewBgCmd(name, command)
+	c.Bg = NewBgCmd(containerCfg)
 
-	return &Container{Name: name, Bg: bg}, nil
+	return c, nil
 }
 
-// Returns the component type, which in this case is a container
-func (c *Container) ComponentType() string {
-	return "container"
-}
-
-// Return the container name to "component" interface.
-func (c *Container) ComponentName() string {
-	return c.Name
-}
-
-// Returns the object that shall be kept alive by Supervisor Trees (Suture), in
-// the Container case we are interesed on having bgcmd object alive.
-func (c *Container) ComponentObject() suture.Service {
-	return c.Bg
-}
-
-// Part of "component" interface, list which checks are available.
-func (c *Container) ComponentChecks() []string {
-	return c.Checks
+// Method to retrieve informatoin about current component towards composer
+// interface.
+func (c *Container) ComponentInfo() *Component {
+	c.componentInfo = Component{
+		Name:     c.Name,
+		Checks:   c.Checks,
+		Type:     "container",
+		Instance: c.Bg,
+	}
+	return &c.componentInfo
 }
 
 // Prepare a container to be up and running, opening the socket using

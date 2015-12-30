@@ -8,7 +8,13 @@ import (
 )
 
 func TestNewBgCmd(t *testing.T) {
-	bg := NewBgCmd("TestNewBgCmd", []string{"sleep", "1"})
+	var bg *BgCmd
+	var containerCfg *ContainerConfig = &ContainerConfig{
+		Name:    "TestNewBgCmd",
+		Command: []string{"sleep", "1"},
+	}
+
+	bg = NewBgCmd(containerCfg)
 
 	Convey("Should be albe have a custom ENV.", t, func() {
 		So(bg.Name, ShouldEqual, "TestNewBgCmd")

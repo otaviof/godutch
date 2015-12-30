@@ -6,22 +6,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"log"
 	"testing"
+	"time"
 )
-
-func TestOnboardContainer(t *testing.T) {
-	var err error
-	var g *GoDutch
-	var c *Container
-
-	g = NewGoDutch()
-	c = mockBootstrappedContainer(t, "TestOnboardContainer")
-
-	Convey("Should be able to Onboard a Container", t, func() {
-		err = g.Onboard(c)
-		So(err, ShouldEqual, nil)
-		c.Shutdown()
-	})
-}
 
 // Test the execution of every check known, from GoDutch Execute method, which
 // calls other method down the stack.
@@ -29,14 +15,17 @@ func TestExecuteChecks(t *testing.T) {
 	var err error
 	var g *GoDutch
 	var c *Container
-	var containerName string = "TestExecuteChecks"
+	var component *Component
 	var resp *Response
 
 	g = NewGoDutch()
-	c = mockContainer(t, containerName)
+	c = mockContainer(t)
+	component = c.ComponentInfo()
 
 	g.Register(c)
 	go g.ServeBackground()
+
+	c.Bootstrap()
 
 	Convey("Should be able to Onboard a Container.", t, func() {
 		err = g.Onboard(c)
@@ -44,7 +33,7 @@ func TestExecuteChecks(t *testing.T) {
 	})
 
 	// caling every known check, making sure there's response
-	for _, checkName := range c.ComponentChecks() {
+	for _, checkName := range component.Checks {
 		log.Println("TEST checkName:", checkName)
 		Convey(fmt.Sprintf("Should be able to Execute '%s'", checkName), t, func() {
 			resp, err = g.Execute(checkName, []string{})
@@ -55,7 +44,8 @@ func TestExecuteChecks(t *testing.T) {
 	}
 
 	Convey("Should be able to offboard a container", t, func() {
-		err = g.Offboard(containerName)
+		time.Sleep(1e9)
+		err = g.Offboard(component.Name)
 		So(err, ShouldEqual, nil)
 	})
 

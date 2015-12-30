@@ -21,7 +21,7 @@ func TestNewConfig(t *testing.T) {
 	})
 
 	Convey("Should be able to read a Integer", t, func() {
-		So(cfg.NRPE.Port, ShouldEqual, 5666)
+		So(cfg.Services["nrpeservice"].Port, ShouldEqual, 5666)
 	})
 
 	Convey("Should be able to load example containers", t, func() {

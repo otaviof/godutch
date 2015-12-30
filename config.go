@@ -1,6 +1,7 @@
 package godutch
 
 import (
+	"errors"
 	"fmt"
 	"github.com/go-ini/ini"
 	"log"
@@ -15,9 +16,7 @@ import (
 //
 type Config struct {
 	GoDutch    GoDutchConfig
-	NRPE       NRPEConfig
-	NCSA       NCSAConfig
-	CollectD   CollectDConfig
+	Services   map[string]*ServiceConfig
 	Containers map[string]*ContainerConfig
 }
 
@@ -28,34 +27,24 @@ type Config struct {
 
 type GoDutchConfig struct {
 	UseUnixSockets bool   `ini:"use_unix_sockets"`
-	ContainersDir  string `ini:"containers_dir"`
 	SocketsDir     string `ini:"sockets_dir"`
+	ContainersDir  string `ini:"containers_dir"`
+	ServicesDir    string `ini:"services_dir"`
 	TCPPortsRange  string `ini:"tcp_ports_range"`
 }
 
-type NRPEConfig struct {
+type ContainerConfig struct {
+	Enabled bool     `ini:"enabled"`
+	Name    string   `ini:"name"`
+	Command []string `ini:"command"`
+}
+
+type ServiceConfig struct {
 	Enabled   bool   `ini:"enabled"`
-	SSL       bool   `ini:"ssl"`
+	Name      string `ini:"name"`
 	Interface string `ini:"interface"`
 	Port      int    `ini:"port"`
-}
-
-type NCSAConfig struct {
-	Enabled bool   `ini:"enabled"`
-	Address string `ini:"address"`
-	Port    int    `ini:"port"`
-}
-
-type CollectDConfig struct {
-	Enabled bool   `ini:"enabled"`
-	Address string `ini:"address"`
-	Port    int    `ini:"port"`
-}
-
-type ContainerConfig struct {
-	Name    string   `ini:"name"`
-	Enabled bool     `ini:"enabled"`
-	Command []string `ini:"command"`
+	Ssl       bool   `ini:"ssl"`
 }
 
 // Instantiate a new Config type, by loading informed configuration file and
@@ -65,6 +54,7 @@ func NewConfig(configPath string) (*Config, error) {
 	var err error
 	var cfg *Config
 	var cfgPathAbs string
+	var dirPath string
 
 	// definining absolute location for informed file
 	cfgPathAbs, _ = filepath.Abs(configPath)
@@ -82,14 +72,22 @@ func NewConfig(configPath string) (*Config, error) {
 
 	// verifying if socket directory exists
 	if _, err = exists(cfg.GoDutch.SocketsDir); err != nil {
-		log.Fatalln("Can't find directory for 'socket_dir': ", err)
+		log.Fatalln("Can't find directory: ('", dirPath, "'):", err)
 		return nil, err
 	}
 
-	// loading containers configuration
-	if err = cfg.globContainersConfig(filepath.Dir(cfgPathAbs)); err != nil {
-		log.Fatalln("Error during containers load:", err)
-		return nil, err
+	cfg.Services = make(map[string]*ServiceConfig)
+	cfg.Containers = make(map[string]*ContainerConfig)
+
+	for _, dirPath = range []string{
+		cfg.GoDutch.ServicesDir,
+		cfg.GoDutch.ContainersDir,
+	} {
+		// loading containers configuration
+		if err = cfg.globIniConfigFIles(filepath.Dir(cfgPathAbs), dirPath); err != nil {
+			log.Fatalln("Error during containers load:", err)
+			return nil, err
+		}
 	}
 
 	return cfg, nil
@@ -97,32 +95,34 @@ func NewConfig(configPath string) (*Config, error) {
 
 // Identifies absolute path for containers' directory and glob for INI files in
 // there, composing a list of INI files on that directory.
-func (cfg *Config) globContainersConfig(baseDir string) error {
+func (cfg *Config) globIniConfigFIles(baseDir string, cfgDir string) error {
 	var err error
-	var containersDir string
+	var cfgDirAbs string
 	var glob string
-	var containers []string
+	var cfgPaths []string
 
-	containersDir, _ = filepath.Abs(
-		filepath.Join(baseDir, cfg.GoDutch.ContainersDir))
+	cfgDirAbs, _ = filepath.Abs(filepath.Join(baseDir, cfgDir))
+	log.Printf("[%s] Absolute path: '%s'", baseDir, cfgDirAbs)
 
-	log.Println("Containers directory at:", containersDir)
-	if _, err = exists(containersDir); err != nil {
-		log.Fatalln("Containers directory does not exist at:", containersDir)
+	if _, err = exists(cfgDirAbs); err != nil {
+		log.Fatalln("Containers directory does not exist at:", cfgDirAbs)
 		return err
 	}
 
 	// listing files on containers' config directory
-	glob = fmt.Sprintf("%s/*.ini", containersDir)
-	if containers, err = filepath.Glob(glob); err != nil {
+	glob = fmt.Sprintf("%s/*.ini", cfgDirAbs)
+	if cfgPaths, err = filepath.Glob(glob); err != nil {
 		log.Fatalln("Errors on directory glob:", err)
 		return err
 	}
 
 	// loading container configuration files
-	log.Println("Containers config files:", containers)
-	if len(containers) > 0 {
-		cfg.loadContainersConfig(containers)
+	log.Println("Containers config files:", cfgPaths)
+	if len(cfgPaths) > 0 {
+		if err = cfg.loadIniConfigs(cfgPaths); err != nil {
+			log.Fatalln("During config-file load:", err)
+			return err
+		}
 	}
 
 	return nil
@@ -130,41 +130,58 @@ func (cfg *Config) globContainersConfig(baseDir string) error {
 
 // Receives a list of Container INI configuration files and load them into
 // "Containers" section of primary Config instance.
-func (cfg *Config) loadContainersConfig(filePaths []string) error {
+func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 	var err error
 	var iniCfg *ini.File
-	var containerCfg *ContainerConfig
-	var containerName string
-	var filePath string
+	var section *ini.Section
+	var sectionName string
+	var cfgPath string
+	var serviceCfg *ServiceConfig = &ServiceConfig{}
+	var containerCfg *ContainerConfig = &ContainerConfig{}
+	var name string
 
-	// allocating memory for containers configuration
-	cfg.Containers = make(map[string]*ContainerConfig)
-
-	for _, filePath = range filePaths {
+	for _, cfgPath = range cfgPaths {
+		log.Printf("Loading file: '%s'", cfgPath)
 		// parsing container INI file
-		if iniCfg, err = ini.Load(filePath); err != nil {
-			log.Fatalln("Config file '", filePath, "' error:", err)
+		if iniCfg, err = ini.Load(cfgPath); err != nil {
+			log.Fatalln("Config file '", cfgPath, "' error:", err)
 			return err
 		}
 
-		containerCfg = new(ContainerConfig)
+		for _, sectionName = range iniCfg.SectionStrings() {
+			section = iniCfg.Section(sectionName)
 
-		// by default a Container configuration file will hold by the section
-		// also named "Container"
-		if err = iniCfg.Section("Container").MapTo(containerCfg); err != nil {
-			log.Fatalln("Error mapping Container INI:", err)
-			return err
-		}
-
-		if len(containerCfg.Name) > 1 {
-			if containerName, err = sanitizeName(containerCfg.Name); err != nil {
-				log.Fatalln("Error on setting up container containerName:", err)
-				return err
+			switch sectionName {
+			case "Service":
+				if err = section.MapTo(serviceCfg); err != nil {
+					log.Fatalln("Error on mapping Service section:", err)
+					return err
+				}
+				if name, err = sanitizeName(serviceCfg.Name); err != nil {
+					log.Fatalln("Error on sanitize name:", err)
+					return err
+				}
+				log.Printf("Debug -> port #%d#", serviceCfg.Port)
+				serviceCfg.Name = name
+				cfg.Services[name] = serviceCfg
+			case "Container":
+				if err = section.MapTo(containerCfg); err != nil {
+					log.Fatalln("Error on mapping Container section:", err)
+					return err
+				}
+				if name, err = sanitizeName(containerCfg.Name); err != nil {
+					log.Fatalln("Error on sanitize name:", err)
+					return err
+				}
+				containerCfg.Name = name
+				cfg.Containers[name] = containerCfg
+			case "DEFAULT":
+				continue
+			default:
+				log.Printf("Ignored section: '%s'", sectionName)
 			}
-			log.Println("Container Name:", containerName)
-			cfg.Containers[containerName] = containerCfg
-		} else {
-			log.Println("[SKIP] No container name found on:", filePath)
+
+			log.Printf("Loaded '%s'->'%s'", sectionName, name)
 		}
 	}
 
@@ -179,12 +196,16 @@ func sanitizeName(rawName string) (string, error) {
 	var safe string
 
 	if reg, err = regexp.Compile("[^A-Za-z0-9]+"); err != nil {
-		log.Fatal("Error on compiling regexp:", err)
 		return "", err
 	}
 
 	safe = reg.ReplaceAllString(rawName, "")
 	safe = strings.ToLower(strings.Trim(safe, ""))
+
+	if len(safe) <= 1 {
+		err = errors.New("Result string is too short.")
+		return "", err
+	}
 
 	return safe, nil
 }
