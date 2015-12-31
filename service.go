@@ -31,14 +31,14 @@ func (n *Service) Execute(req []byte) (*Response, error) {
 
 // Displays the name for this service (component).
 func (s *Service) ComponentInfo() *Component {
-	var component Component
-	component = Component{
+	var component *Component
+	component = &Component{
 		Name:     s.Name,
 		Checks:   []string{},
 		Type:     "service",
 		Instance: s.Srvc,
 	}
-	return &component
+	return component
 }
 
 /* EOF */

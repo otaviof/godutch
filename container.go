@@ -15,21 +15,20 @@ import (
 // communicate using a socket and GoDutch-Protocol, based on JSON.
 //
 type Container struct {
-	Name          string
-	Bg            *BgCmd
-	socket        net.Conn
-	bootstrapped  bool
-	Checks        []string
-	componentInfo Component
+	Name         string
+	Bg           *BgCmd
+	socket       net.Conn
+	bootstrapped bool
+	Checks       []string
 }
 
-// Creates a new Container type, using name and command informed by parameter
-// to spawn a background process via BgCmd, exposed using Bg attribute.
+// Creates a new container with a background command.
 func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
-	var c *Container = &Container{Name: containerCfg.Name}
+	var err error
+	var c *Container
 
 	if len(containerCfg.Command) < 2 {
-		err := errors.New("Informed command is not long enough:" +
+		err = errors.New("Informed command is not long enough:" +
 			strings.Join(containerCfg.Command, " "))
 		return nil, err
 	}
@@ -38,7 +37,10 @@ func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
 	log.Printf("Container command: '%s'",
 		strings.Join(containerCfg.Command, " "))
 
-	c.Bg = NewBgCmd(containerCfg)
+	c = &Container{
+		Name: containerCfg.Name,
+		Bg:   NewBgCmd(containerCfg),
+	}
 
 	return c, nil
 }
@@ -46,13 +48,12 @@ func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
 // Method to retrieve informatoin about current component towards composer
 // interface.
 func (c *Container) ComponentInfo() *Component {
-	c.componentInfo = Component{
+	return &Component{
 		Name:     c.Name,
 		Checks:   c.Checks,
 		Type:     "container",
 		Instance: c.Bg,
 	}
-	return &c.componentInfo
 }
 
 // Prepare a container to be up and running, opening the socket using
@@ -77,6 +78,8 @@ func (c *Container) Bootstrap() error {
 	return nil
 }
 
+// Dials to a socket using a counter to support a few attempts before just
+// returning back the error.
 func (c *Container) socketDial() error {
 	var err error
 	var counter int = 0
@@ -146,19 +149,16 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 	}
 
 	// background routine to read socke's FD, informing response and error
-	// channels when there's data back
+	// channels when there's data back, for socket-close action we adopt defer
 	go c.socketReader(respCh, errorCh)
-
 	defer c.socket.Close()
 
 	// TODO
-	//   * Handle request timeouts;
-	// http://stackoverflow.com/questions/9680812
+	//  * Handle request timeouts (http://stackoverflow.com/questions/9680812);
 	for {
 		select {
 		case payload = <-respCh:
 			log.Println("Got back:", string(payload[:]))
-			// converting JSON contents into local struct
 			if resp, err = NewResponse(payload[:]); err != nil {
 				log.Fatalln("Parsing response:", err)
 				return nil, err
