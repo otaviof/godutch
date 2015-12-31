@@ -55,10 +55,11 @@ func (self *Self) loadContainers() {
 	self.containers = make(map[string]*godutch.Container)
 
 	for name, containerCfg = range self.cfg.Containers {
-		log.Printf("Loading container: '%s'", name)
+		log.Printf("-- Loading container: '%s'", name)
+		log.Println("Container Cfg:", containerCfg)
 
 		if !containerCfg.Enabled {
-			log.Println("-- skipping disabled container --")
+			log.Println("--!!-- SKIPPING DISABLED CONTAINER --!!--")
 			continue
 		}
 
@@ -69,7 +70,10 @@ func (self *Self) loadContainers() {
 
 		// keeping the container pointer for the onboard step
 		self.containers[name] = c
-		self.g.Register(c)
+
+		if err = self.g.Register(c); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -81,9 +85,15 @@ func (self *Self) onboardContainers() {
 	var c *godutch.Container
 
 	for name, c = range self.containers {
-		log.Printf("Onboarding container: '%s'", name)
+		log.Printf("-- Onboarding container: '%s'", name)
+		if err = c.Bootstrap(); err != nil {
+			log.Fatalln("On bootstrap, error:", err)
+			panic(err)
+		}
+
 		if err = self.g.Onboard(c); err != nil {
 			log.Fatalln("Error on onboarding:", err)
+			panic(err)
 		}
 	}
 }
@@ -98,18 +108,27 @@ func (self *Self) loadServices() {
 	self.services = make(map[string]*godutch.Service)
 
 	for name, serviceCfg = range self.cfg.Services {
+		log.Println("Service: ", name)
+
 		s = godutch.NewService(serviceCfg, self.g)
 		self.services[name] = s
-		self.g.Register(s)
+
+		if err = self.g.Register(s); err != nil {
+			panic(err)
+		}
 	}
 }
 
 // Add the NRPE service into the Supervisor, to start listening and executing
 // checks, linked by the informed GoDutch pointer.
-func (self *Self) onboardNRPEService() {
+func (self *Self) onboardServices() {
 	var err error
-	if err = self.g.Onboard(self.ns); err != nil {
-		panic(err)
+	var s *godutch.Service
+
+	for _, s = range self.services {
+		if err = self.g.Onboard(s); err != nil {
+			log.Fatalln("Error on onboarding:", err)
+		}
 	}
 }
 
@@ -118,7 +137,7 @@ func (self *Self) onboardNRPEService() {
 //
 func main() {
 	var configFilePath string
-	var self *Self
+	var self Self
 
 	flag.StringVar(
 		&configFilePath,
@@ -127,20 +146,20 @@ func main() {
 		"Path to configuration file, `godutch.ini`")
 	flag.Parse()
 
-	self = &Self{cfgPath: configFilePath}
+	self = Self{cfgPath: configFilePath}
 
 	self.loadConfig()
 	self.loadGoDutch()
-	self.loadNRPEService()
+	self.loadServices()
 	self.loadContainers()
 
-	go func() {
+	go func(self *Self) {
 		// actions bellow suppose to happen after the Supervisor is loaded,
 		// although, there's no confirmation of that state in place, yet.
 		time.Sleep(1e9)
 		self.onboardContainers()
-		self.onboardNRPEService()
-	}()
+		self.onboardServices()
+	}(&self)
 
 	self.g.Serve()
 }
