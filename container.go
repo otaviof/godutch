@@ -27,6 +27,14 @@ func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
 	var err error
 	var c *Container
 
+	// verifying if socket directory exists
+	if _, err = exists(containerCfg.SocketDir); err != nil {
+		log.Fatalln(
+			"Can't find socket directory: ('",
+			containerCfg.SocketDir, "'):", err)
+		return nil, err
+	}
+
 	if len(containerCfg.Command) < 2 {
 		err = errors.New("Informed command is not long enough:" +
 			strings.Join(containerCfg.Command, " "))
@@ -138,13 +146,13 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 	var errorCh chan error = make(chan error)
 
 	if c.socketDial(); err != nil {
-		log.Fatalln("Socket DIAL error:", err)
+		log.Fatalln("[SOCKET] Dial error:", err)
 		return nil, err
 	}
 
 	log.Println("Sending request:", string(req[:]))
 	if _, err = c.socket.Write(req); err != nil {
-		log.Println("Socket WRITE error:", err)
+		log.Println("[SOCKET] WRITE error:", err)
 		return nil, err
 	}
 
@@ -176,11 +184,11 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 // sent to response-channel (respCh), informed by parameters. Error is captured
 // locally and also sent back by error-channel (errorCh).
 func (c *Container) socketReader(respCh chan []byte, errorCh chan error) {
+	var err error
 	var buf bytes.Buffer
 	for {
-		_, err := io.Copy(&buf, c.socket)
-		if err != nil {
-			log.Println("Socket read error:", err)
+		if _, err = io.Copy(&buf, c.socket); err != nil {
+			log.Println("[SOCKET] Read error:", err)
 			errorCh <- err
 			return
 		}

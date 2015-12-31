@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -27,12 +28,19 @@ type BgCmd struct {
 // Creates a new BgCmd object, which will prepare socket and os/exec command to
 // run in background, after "Bootstrap".
 func NewBgCmd(containerCfg *ContainerConfig) *BgCmd {
+	var okay bool = false
 	var bg *BgCmd
+	var socketName string = fmt.Sprintf("godutch-%s.sock", containerCfg.Name)
+	var socketPath string = filepath.Join(containerCfg.SocketDir, socketName)
+
+	if okay, _ = exists(socketPath); okay {
+		log.Printf("[WARN] Socket already found at: '%s'", socketPath)
+	}
 
 	bg = &BgCmd{
 		Name:       containerCfg.Name,
 		command:    containerCfg.Command,
-		SocketPath: fmt.Sprintf("/tmp/godutch-%s.sock", containerCfg.Name),
+		SocketPath: socketPath,
 	}
 
 	// socket information, basic commnicaton method with background process
@@ -99,10 +107,12 @@ func (bg *BgCmd) setenv(key string, value string) []string {
 	var env []string = os.Environ()
 	var newEnv []string
 	var newEntry string
+	var entry string
+	var keyValue []string
 
-	for _, entry := range env {
-		name := strings.Split(entry, "=")
-		if name[0] == key && name[1] != value {
+	for _, entry = range env {
+		keyValue = strings.Split(entry, "=")
+		if keyValue[0] == key && keyValue[1] != value {
 			newEntry = fmt.Sprintf("%s=%s", key, value)
 			newEnv = append(newEnv, newEntry)
 			log.Println("ENV:", newEntry)

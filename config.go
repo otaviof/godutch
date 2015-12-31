@@ -27,16 +27,16 @@ type Config struct {
 
 type GoDutchConfig struct {
 	UseUnixSockets bool   `ini:"use_unix_sockets"`
-	SocketsDir     string `ini:"sockets_dir"`
 	ContainersDir  string `ini:"containers_dir"`
 	ServicesDir    string `ini:"services_dir"`
 	TCPPortsRange  string `ini:"tcp_ports_range"`
 }
 
 type ContainerConfig struct {
-	Enabled bool     `ini:"enabled"`
-	Name    string   `ini:"name"`
-	Command []string `ini:"command"`
+	Enabled   bool     `ini:"enabled"`
+	Name      string   `ini:"name"`
+	Command   []string `ini:"command"`
+	SocketDir string   `ini:"socket_dir"`
 }
 
 type ServiceConfig struct {
@@ -67,12 +67,6 @@ func NewConfig(configPath string) (*Config, error) {
 
 	// transforming INI file into local Config object
 	if cfg, err = parseConfigINI(cfgPathAbs); err != nil {
-		return nil, err
-	}
-
-	// verifying if socket directory exists
-	if _, err = exists(cfg.GoDutch.SocketsDir); err != nil {
-		log.Fatalln("Can't find directory: ('", dirPath, "'):", err)
 		return nil, err
 	}
 

@@ -47,8 +47,9 @@ func mockBootstrappedContainer(t *testing.T) *Container {
 func TestNewContainer(t *testing.T) {
 	var err error
 	var containerCfg *ContainerConfig = &ContainerConfig{
-		Name:    "TestNewBgCmd",
-		Command: []string{"sleep", "1"},
+		Name:      "TestNewBgCmd",
+		SocketDir: "/tmp",
+		Command:   []string{"sleep", "1"},
 	}
 
 	Convey("Should not return errors on NewContainer", t, func() {
