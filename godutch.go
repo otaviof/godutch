@@ -63,13 +63,18 @@ func (g *GoDutch) onboardContainer(c Composer) error {
 	var err error
 	var checkName string
 	var component *Component = c.ComponentInfo()
+	var okay bool
+
+	if _, okay = g.Containers[component.Name]; okay {
+		err = errors.New("Container already onboarded: " + component.Name)
+		return err
+	}
 
 	// chance for loading it's process
 	if err = c.Bootstrap(); err != nil {
 		return err
 	}
 
-	log.Println("Debug -> checks:", component.Checks)
 	// a container must have at least one check
 	if len(component.Checks) <= 0 {
 		err = errors.New("Container '" + component.Name + "' has no Checks.")
@@ -125,9 +130,25 @@ func (g *GoDutch) Onboard(c Composer) error {
 
 // Adding background process to the local Supervisor, saving the unique
 // service-id into the local registry.
-func (g *GoDutch) Register(c Composer) {
+func (g *GoDutch) Register(c Composer) error {
+	var err error
+	var okay bool = false
 	var component *Component = c.ComponentInfo()
+
+	log.Printf("Registerig %s: '%s'", component.Type, component.Name)
+
+	if _, okay = g.tokens[component.Name]; okay {
+		err = errors.New(
+			"Component '" + component.Type + "' named '" +
+				component.Name + "' is already registered.")
+		log.Fatalln(err)
+		return err
+	}
+
+	// saving component's token
 	g.tokens[component.Name] = g.Add(component.Instance)
+
+	return nil
 }
 
 // Execute the Offboard of a Container or Service based on it's name.

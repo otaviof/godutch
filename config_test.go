@@ -26,11 +26,12 @@ func TestNewConfig(t *testing.T) {
 
 	Convey("Should be able to load example containers", t, func() {
 		So(len(cfg.Containers), ShouldBeGreaterThan, 0)
-		So(
-			cfg.Containers["rubycontainer"].Command[0],
+		So(cfg.Containers["rubycontainer"].Command[0],
 			ShouldEqual,
-			"/usr/bin/ruby",
-		)
+			"/usr/bin/ruby")
+		So(cfg.Containers["perlcontainer"].Command[0],
+			ShouldContainSubstring,
+			"bin/godutch")
 	})
 }
 

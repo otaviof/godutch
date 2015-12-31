@@ -136,8 +136,8 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 	var section *ini.Section
 	var sectionName string
 	var cfgPath string
-	var serviceCfg *ServiceConfig = &ServiceConfig{}
-	var containerCfg *ContainerConfig = &ContainerConfig{}
+	var serviceCfg *ServiceConfig
+	var containerCfg *ContainerConfig
 	var name string
 
 	for _, cfgPath = range cfgPaths {
@@ -153,6 +153,7 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 
 			switch sectionName {
 			case "Service":
+				serviceCfg = new(ServiceConfig)
 				if err = section.MapTo(serviceCfg); err != nil {
 					log.Fatalln("Error on mapping Service section:", err)
 					return err
@@ -161,10 +162,10 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 					log.Fatalln("Error on sanitize name:", err)
 					return err
 				}
-				log.Printf("Debug -> port #%d#", serviceCfg.Port)
 				serviceCfg.Name = name
 				cfg.Services[name] = serviceCfg
 			case "Container":
+				containerCfg = new(ContainerConfig)
 				if err = section.MapTo(containerCfg); err != nil {
 					log.Fatalln("Error on mapping Container section:", err)
 					return err
@@ -181,7 +182,7 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 				log.Printf("Ignored section: '%s'", sectionName)
 			}
 
-			log.Printf("Loaded '%s'->'%s'", sectionName, name)
+			log.Printf("Config section: '%s' -> '%s'", sectionName, name)
 		}
 	}
 
