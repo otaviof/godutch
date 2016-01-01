@@ -135,7 +135,7 @@ const (
 	STATE_OK                   = 0
 )
 
-type NRPEPacket struct {
+type NrpePacket struct {
 	Version int16
 	Type    int16
 	CRC32   uint32
@@ -149,7 +149,7 @@ var cIEEETable *C.ulong = C.generate_crc32_table()
 
 // Transforms a normal Response object back into a NRPE Packet, with proper
 // flags to be considered a response.
-func NRPEPacketFromResponse(resp *Response) []byte {
+func NrpePacketFromResponse(resp *Response) []byte {
 	var cPkt *C.packet
 	var cast *C.char
 	var n int
@@ -192,9 +192,9 @@ func NRPEPacketFromResponse(resp *Response) []byte {
 }
 
 // Creates and validate a NRPE packet, using c bytes input.
-func NewNRPEPacket(cbytes []byte, size int) (*NRPEPacket, error) {
+func NewNrpePacket(cbytes []byte, size int) (*NrpePacket, error) {
 	var err error
-	var pkt *NRPEPacket = &NRPEPacket{cbytes: cbytes, size: size}
+	var pkt *NrpePacket = &NrpePacket{cbytes: cbytes, size: size}
 
 	if err = pkt.checkPacketSize(); err != nil {
 		log.Fatalln("NRPE Packet size does not match:", err)
@@ -214,7 +214,7 @@ func NewNRPEPacket(cbytes []byte, size int) (*NRPEPacket, error) {
 }
 
 // Wraps the most of type-casting for a C packet into Go.
-func (pkt *NRPEPacket) cbytesIntoStruct() {
+func (pkt *NrpePacket) cbytesIntoStruct() {
 	var cChar *C.char
 
 	// extracting original bytes on local C.char pointer
@@ -229,7 +229,7 @@ func (pkt *NRPEPacket) cbytesIntoStruct() {
 }
 
 // Double check if informed packet size matches defaults.
-func (pkt *NRPEPacket) checkPacketSize() error {
+func (pkt *NrpePacket) checkPacketSize() error {
 	var err error
 	if pkt.size != NRPE_PACKET_SIZE {
 		err = errors.New(
@@ -243,7 +243,7 @@ func (pkt *NRPEPacket) checkPacketSize() error {
 
 // Calculates the CRC32 using C function and compares with informed value, all
 // ulong are cast into uint32 type.
-func (pkt *NRPEPacket) validateCRC32() error {
+func (pkt *NrpePacket) validateCRC32() error {
 	var err error
 	var crc32 uint32 = (uint32)(C.calc_packet_crc32(pkt.cPacket, cIEEETable))
 
@@ -256,7 +256,7 @@ func (pkt *NRPEPacket) validateCRC32() error {
 }
 
 // Separates the command and arguments from a packet's buffer.
-func (pkt *NRPEPacket) ExtractCmdAndArgsFromBuffer() (string, []string, error) {
+func (pkt *NrpePacket) ExtractCmdAndArgsFromBuffer() (string, []string, error) {
 	var err error
 	var buffer []string
 	var cmd string

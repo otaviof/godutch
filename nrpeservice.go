@@ -8,7 +8,7 @@ import (
 
 //
 // Defines the NRPE service, which listens on configured interface and it's
-// able to create a NRPEPacket object with connection's payload.
+// able to create a NrpePacket object with connection's payload.
 //
 type NrpeService struct {
 	listener net.Listener
@@ -51,13 +51,13 @@ func (ns *NrpeService) Serve() {
 }
 
 // Takes a network connection and extract it's buffer, passing along to create
-// a NRPEPacket, from which we can extract the actual command and it's
+// a NrpePacket, from which we can extract the actual command and it's
 // arguments.
 func (ns *NrpeService) handleConnection(conn net.Conn) {
 	var err error
 	var n int
 	var buf []byte = make([]byte, NRPE_PACKET_SIZE)
-	var pkt *NRPEPacket
+	var pkt *NrpePacket
 	var cmd string
 	var args []string = []string{}
 	var resp *Response
@@ -69,7 +69,7 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 	log.Println("Bytes read from connection:", n)
 
 	// transforming payload on a NRPE packet
-	if pkt, err = NewNRPEPacket(buf, n); err != nil {
+	if pkt, err = NewNrpePacket(buf, n); err != nil {
 		log.Fatalln("Payload:", string(buf[:]))
 		log.Fatalln("Error on instantiating a new NRPE Packet:", err)
 		return
@@ -91,7 +91,7 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 	}
 
 	// writing back to the connection
-	if _, err = conn.Write(NRPEPacketFromResponse(resp)); err != nil {
+	if _, err = conn.Write(NrpePacketFromResponse(resp)); err != nil {
 		log.Fatalln("Error on writing response:", err)
 		return
 	}

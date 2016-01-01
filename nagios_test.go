@@ -53,12 +53,12 @@ var CHECK_NRPE_PAYLOAD []byte = []byte{
 
 func TestPacketExtract(t *testing.T) {
 	var err error
-	var pkt *NRPEPacket
+	var pkt *NrpePacket
 	var cmd string
 	var args []string
 
 	// instanciating the nrpe class to unassemble mock packet buffer
-	pkt, err = NewNRPEPacket(CHECK_NRPE_PAYLOAD, NRPE_PACKET_SIZE)
+	pkt, err = NewNrpePacket(CHECK_NRPE_PAYLOAD, NRPE_PACKET_SIZE)
 
 	Convey("Should extract a NRPE packet from C bytes", t, func() {
 		So(err, ShouldEqual, nil)
@@ -74,10 +74,10 @@ func TestPacketExtract(t *testing.T) {
 	})
 }
 
-func TestNRPEPacketFromResponse(t *testing.T) {
+func TestNrpePacketFromResponse(t *testing.T) {
 	var err error
 	var cpkt []byte
-	var pkt *NRPEPacket
+	var pkt *NrpePacket
 	var resp *Response
 	var stdout string = "Test01 STDOUT"
 
@@ -88,14 +88,14 @@ func TestNRPEPacketFromResponse(t *testing.T) {
 			Stdout: []string{stdout},
 			Error:  "",
 		}
-		cpkt = NRPEPacketFromResponse(resp)
+		cpkt = NrpePacketFromResponse(resp)
 		So(len(cpkt), ShouldEqual, NRPE_PACKET_SIZE)
 		So(err, ShouldEqual, nil)
 	})
 
 	Convey("Should be able to transform it back, and check CRC32", t, func() {
-		// calling a new NRPEPacket will trigger the CRC32 checking
-		pkt, err = NewNRPEPacket(cpkt, NRPE_PACKET_SIZE)
+		// calling a new NrpePacket will trigger the CRC32 checking
+		pkt, err = NewNrpePacket(cpkt, NRPE_PACKET_SIZE)
 		So(err, ShouldEqual, nil)
 		So(pkt.CRC32, ShouldBeGreaterThan, 0)
 	})
