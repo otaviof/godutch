@@ -48,6 +48,11 @@ func TestNewNrpeService(t *testing.T) {
 		So(err, ShouldEqual, nil)
 	})
 
+	Convey("Should be able to shutdown a service", t, func() {
+		err = s.Shutdown()
+		So(err, ShouldEqual, nil)
+	})
+
 	defer g.Stop()
 }
 

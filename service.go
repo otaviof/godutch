@@ -1,5 +1,10 @@
 package godutch
 
+//
+// Type Service must implement Composer interface and keep track of the running
+// service instance (Suture interface compatible) running underneath. Here the
+// actual service boostrap should take place.
+//
 type Service struct {
 	Name string
 	g    *GoDutch
@@ -7,17 +12,24 @@ type Service struct {
 	cfg  *ServiceConfig
 }
 
+// Creates a new Service instance spawning a Nrpe listener.
 func NewService(cfg *ServiceConfig, g *GoDutch) *Service {
 	var s *Service = &Service{Name: cfg.Name, g: g}
+	// TODO
+	//  * How to identify and only load the informed service? Here we have a
+	//    hardcoded NrpeService being managed;
 	s.Srvc = NewNrpeService(cfg, g)
 	return s
 }
 
-func (s *Service) Shutdown() error {
+// Dummy method on Service, there's no bootstrap here.
+func (s *Service) Bootstrap() error {
 	return nil
 }
 
-func (s *Service) Bootstrap() error {
+// Shutdown will cover calling for running service stop.
+func (s *Service) Shutdown() error {
+	s.Srvc.Stop()
 	return nil
 }
 
