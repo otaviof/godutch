@@ -20,6 +20,8 @@ type Container struct {
 	socket       net.Conn
 	bootstrapped bool
 	Checks       []string
+	respCh       chan []byte
+	errorCh      chan error
 }
 
 // Creates a new container with a background command.
@@ -142,8 +144,9 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 	var err error
 	var payload []byte
 	var resp *Response
-	var respCh chan []byte = make(chan []byte)
-	var errorCh chan error = make(chan error)
+
+	c.respCh = make(chan []byte)
+	c.errorCh = make(chan error)
 
 	if c.socketDial(); err != nil {
 		log.Fatalln("[SOCKET] Dial error:", err)
@@ -158,14 +161,16 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 
 	// background routine to read socke's FD, informing response and error
 	// channels when there's data back, for socket-close action we adopt defer
-	go c.socketReader(respCh, errorCh)
+	go c.socketReader()
+	// to be closed when we end this func, in other words, right after reading
+	// data or handling connection error
 	defer c.socket.Close()
 
 	// TODO
 	//  * Handle request timeouts (http://stackoverflow.com/questions/9680812);
 	for {
 		select {
-		case payload = <-respCh:
+		case payload = <-c.respCh:
 			log.Println("Got back:", string(payload[:]))
 			if resp, err = NewResponse(payload[:]); err != nil {
 				log.Fatalln("Parsing response:", err)
@@ -173,7 +178,7 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 			}
 			log.Printf("Response: %#v", resp)
 			return resp, nil
-		case err = <-errorCh:
+		case err = <-c.errorCh:
 			log.Println("Socket reading error:", err)
 			return nil, err
 		}
@@ -183,17 +188,15 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 // Reads from a socket file descriptor onto a local buffer, which is by the end
 // sent to response-channel (respCh), informed by parameters. Error is captured
 // locally and also sent back by error-channel (errorCh).
-func (c *Container) socketReader(respCh chan []byte, errorCh chan error) {
+func (c *Container) socketReader() {
 	var err error
 	var buf bytes.Buffer
-	for {
-		if _, err = io.Copy(&buf, c.socket); err != nil {
-			log.Println("[SOCKET] Read error:", err)
-			errorCh <- err
-			return
-		}
-		respCh <- buf.Bytes()
+	if _, err = io.Copy(&buf, c.socket); err != nil {
+		log.Println("[SOCKET] Read error:", err)
+		c.errorCh <- err
+		return
 	}
+	c.respCh <- buf.Bytes()
 }
 
 /* EOF */
