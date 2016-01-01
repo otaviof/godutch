@@ -16,6 +16,8 @@ import (
 	"flag"
 	"github.com/otaviof/godutch"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"time"
 )
 
@@ -145,6 +147,10 @@ func main() {
 		"/etc/godutch/godutch.ini",
 		"Path to configuration file, `godutch.ini`")
 	flag.Parse()
+
+	go func() {
+		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
 
 	self = Self{cfgPath: configFilePath}
 
