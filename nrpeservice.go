@@ -63,7 +63,7 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 	var resp *Response
 
 	if n, err = conn.Read(buf); n == 0 || err != nil {
-		log.Fatalln("Error reading from connection:", err)
+		log.Println("Error reading from connection:", err)
 		return
 	}
 	log.Println("Bytes read from connection:", n)

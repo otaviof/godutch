@@ -154,7 +154,6 @@ func NrpePacketFromResponse(resp *Response) []byte {
 	var cast *C.char
 	var n int
 	var bytevalue byte
-	var cbytes []byte = make([]byte, NRPE_PACKET_SIZE)
 	// auxiliary local type to reflect a NRPE type of packet with appropriated
 	// Go types and C compatible naming
 	var goPkt struct {
@@ -185,10 +184,7 @@ func NrpePacketFromResponse(resp *Response) []byte {
 	cPkt = (*C.packet)(unsafe.Pointer(&goPkt))
 	cast = (*C.char)(unsafe.Pointer(cPkt))
 
-	// final format is bytes
-	cbytes = C.GoBytes(unsafe.Pointer(cast), NRPE_PACKET_SIZE)
-
-	return cbytes
+	return C.GoBytes(unsafe.Pointer(cast), NRPE_PACKET_SIZE)
 }
 
 // Creates and validate a NRPE packet, using c bytes input.
