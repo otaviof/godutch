@@ -34,7 +34,7 @@ func NewBgCmd(containerCfg *ContainerConfig) *BgCmd {
 	var socketPath string = filepath.Join(containerCfg.SocketDir, socketName)
 
 	if okay, _ = exists(socketPath); okay {
-		log.Printf("[WARN] Socket already found at: '%s'", socketPath)
+		log.Printf("[BgCmd] [WARN] Socket already found at: '%s'", socketPath)
 	}
 
 	bg = &BgCmd{
@@ -54,20 +54,20 @@ func NewBgCmd(containerCfg *ContainerConfig) *BgCmd {
 // call, trowing stdout/stderr entries on log interface.
 func (bg *BgCmd) Serve() {
 	var err error
-	log.Println("Starting to 'serve':", bg.Name)
+	log.Println("[BgCmd] Starting to 'serve':", bg.Name)
 
 	if err = bg.spawnCmd(); err != nil {
-		log.Fatalln("Spawn error:", err)
+		log.Fatalln("[BgCmd] Spawn error:", err)
 	}
 
 	if err = bg.Cmd.Start(); err != nil {
-		log.Fatalln("Start error:", err)
+		log.Fatalln("[BgCmd] Start error:", err)
 	}
 
 	bg.captureOutput()
 
 	if err = bg.Cmd.Wait(); err != nil {
-		log.Println("Wait error:", err)
+		log.Println("[BgCmd] Wait error:", err)
 	}
 }
 
@@ -81,12 +81,10 @@ func (bg *BgCmd) spawnCmd() error {
 
 	// leaving stdout and stderr pipes for capturing outputs
 	if bg.stdout, err = bg.Cmd.StdoutPipe(); err != nil {
-		log.Fatalln(err)
 		return err
 	}
 
 	if bg.stderr, err = bg.Cmd.StderrPipe(); err != nil {
-		log.Fatalln(err)
 		return err
 	}
 
@@ -97,7 +95,7 @@ func (bg *BgCmd) spawnCmd() error {
 func (bg *BgCmd) Stop() {
 	var err error
 	if err = bg.Cmd.Process.Kill(); err != nil {
-		log.Println("Error on kill: ", err)
+		log.Println("[BgCmd] Error on kill: ", err)
 	}
 }
 
@@ -115,7 +113,7 @@ func (bg *BgCmd) setenv(key string, value string) []string {
 		if keyValue[0] == key && keyValue[1] != value {
 			newEntry = fmt.Sprintf("%s=%s", key, value)
 			newEnv = append(newEnv, newEntry)
-			log.Println("ENV:", newEntry)
+			log.Println("[BgCmd] ENV:", newEntry)
 		}
 	}
 
@@ -132,11 +130,11 @@ func (bg *BgCmd) captureOutput() {
 	output := bufio.NewScanner(multi)
 
 	for output.Scan() {
-		log.Println("[", bg.Name, "STDOUT ]:", output.Text())
+		log.Println("[BgCmd] [", bg.Name, "STDOUT ]:", output.Text())
 	}
 
 	if err = output.Err(); err != nil {
-		log.Println("[", bg.Name, "STDERR ]:", err)
+		log.Println("[BgCmd] [", bg.Name, "STDERR ]:", err)
 	}
 }
 

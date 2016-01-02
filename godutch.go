@@ -66,7 +66,8 @@ func (g *GoDutch) onboardContainer(c Composer) error {
 	var okay bool
 
 	if _, okay = g.Containers[component.Name]; okay {
-		err = errors.New("Container already onboarded: " + component.Name)
+		err = errors.New(
+			"[GoDutch] Container already onboarded: " + component.Name)
 		return err
 	}
 
@@ -77,14 +78,15 @@ func (g *GoDutch) onboardContainer(c Composer) error {
 
 	// a container must have at least one check
 	if len(component.Checks) <= 0 {
-		err = errors.New("Container '" + component.Name + "' has no Checks.")
+		err = errors.New(
+			"[GoDutch] Container '" + component.Name + "' has no Checks.")
 		return err
 	}
 
-	log.Println("Loading container:", component.Name)
+	log.Printf("[GoDutch] Loading container: '%s'", component.Name)
 	g.Containers[component.Name] = c
 	for _, checkName = range component.Checks {
-		log.Printf("** Loading check: '%s' (%s)", checkName, component.Name)
+		log.Printf("[GoDutch] ** Loading check: '%s' (%s)", checkName, component.Name)
 		g.Checks[checkName] = component.Name
 	}
 
@@ -112,16 +114,17 @@ func (g *GoDutch) Onboard(c Composer) error {
 	switch component.Type {
 	case "container":
 		if err = g.onboardContainer(c); err != nil {
-			log.Fatalln("Errors on onboarding container:", err)
+			log.Fatalln("[GoDutch] Errors on onboarding CONTAINER:", err)
 			return err
 		}
 	case "service":
 		if err = g.onboardService(c); err != nil {
-			log.Fatalln("Errors on onboarding service:", err)
+			log.Fatalln("[GoDutch] Errors on onboarding SERVICE:", err)
 			return err
 		}
 	default:
-		err = errors.New("Component type is not known: " + component.Type)
+		err = errors.New(
+			"[GoDutch] Component type is not known: " + component.Type)
 		return err
 	}
 
@@ -135,11 +138,11 @@ func (g *GoDutch) Register(c Composer) error {
 	var okay bool = false
 	var component *Component = c.ComponentInfo()
 
-	log.Printf("Registerig %s: '%s'", component.Type, component.Name)
+	log.Printf("[GoDutch] Registerig %s: '%s'", component.Type, component.Name)
 
 	if _, okay = g.tokens[component.Name]; okay {
 		err = errors.New(
-			"Component '" + component.Type + "' named '" +
+			"[GoDutch] Component '" + component.Type + "' named '" +
 				component.Name + "' is already registered.")
 		log.Fatalln(err)
 		return err
@@ -159,7 +162,7 @@ func (g *GoDutch) Offboard(name string) error {
 	// first let's check if this is a service
 	if _, okay = g.Services[name]; okay {
 		if err = g.offboardService(name); err != nil {
-			log.Fatalln("Error on offboarding service:", err)
+			log.Fatalln("[GoDutch] Error on offboarding service:", err)
 			return err
 		}
 		return nil
@@ -167,7 +170,7 @@ func (g *GoDutch) Offboard(name string) error {
 
 	// or it might be container then
 	if err = g.offboardContainer(name); err != nil {
-		log.Fatalln("Error on offboarding a container:", err)
+		log.Fatalln("[GoDutch] Error on offboarding a container:", err)
 		return err
 	}
 
@@ -204,10 +207,11 @@ func (g *GoDutch) offboardContainer(name string) error {
 			delete(g.Checks, checkName)
 		}
 		if err = c.Shutdown(); err != nil {
-			log.Fatalln("Error on shutting down container:", err)
+			log.Fatalln("[GoDutch] Error on shutting down container:", err)
 		}
 	} else {
-		err = errors.New("Can't find container '" + component.Name + "'")
+		err = errors.New(
+			"[GoDutch] Can't find container '" + component.Name + "'")
 		return err
 	}
 
@@ -224,27 +228,26 @@ func (g *GoDutch) Execute(cmd string, args []string) (*Response, error) {
 	var resp *Response
 	var okay bool
 
-	log.Printf("GoDutch about to execute cmd: '%s'", cmd)
-
 	if containerName, okay = g.Checks[cmd]; !okay {
-		err = errors.New("Can't find check '" + cmd + "' on any container.")
+		err = errors.New(
+			"[GoDutch] Can't find check '" + cmd + "' on any container.")
 		return nil, err
 	}
 
-	log.Println("Container:", containerName, ", Command:", cmd)
+	log.Printf("[GoDutch] Container: '%s', Command: '%s'", containerName, cmd)
 	if c, okay = g.Containers[containerName]; !okay {
-		err = errors.New("Can't find container: " + containerName)
+		err = errors.New("[GoDutch] Can't find container: " + containerName)
 		return nil, err
 	}
 
 	if req, err = NewRequest(cmd, args); err != nil {
-		log.Fatalln("Error on creating Request:", err)
+		log.Fatalln("[GoDutch] Error on creating Request:", err)
 		return nil, err
 	}
 
 	if resp, err = c.Execute(req); err != nil {
-		log.Println("On request:", string(req[:]))
-		log.Println("Error on Execute '", cmd, "':", err)
+		log.Printf("[GoDutch] On request: '%s'", string(req[:]))
+		log.Println("[GoDutch] Error on Execute '", cmd, "':", err)
 		return nil, err
 	}
 

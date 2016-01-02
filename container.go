@@ -32,7 +32,7 @@ func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
 	// verifying if socket directory exists
 	if _, err = exists(containerCfg.SocketDir); err != nil {
 		log.Fatalln(
-			"Can't find socket directory: ('",
+			"[Container] Can't find socket directory: ('",
 			containerCfg.SocketDir, "'):", err)
 		return nil, err
 	}
@@ -43,8 +43,8 @@ func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
 		return nil, err
 	}
 
-	log.Printf("*** Container Name: '%s' ***", containerCfg.Name)
-	log.Printf("Container command: '%s'",
+	log.Printf("[Container] Name: '%s', Command: '%s'",
+		containerCfg.Name,
 		strings.Join(containerCfg.Command, " "))
 
 	c = &Container{
@@ -72,12 +72,12 @@ func (c *Container) Bootstrap() error {
 	var err error
 
 	if c.bootstrapped {
-		log.Println("Container has already been bootstraped.")
+		log.Println("[Container] Already has been bootstraped, skipping.")
 		return nil
 	}
 
-	log.Println("Bootstraping Container:", c.Name)
-	log.Println("Container's socket path:", c.Bg.SocketPath)
+	log.Printf("[Container] Bootstraping: '%s', Socket path: '%s'",
+		c.Name, c.Bg.SocketPath)
 
 	if err = c.listCheckMethods(); err != nil {
 		return err
@@ -98,7 +98,9 @@ func (c *Container) socketDial() error {
 		counter += 1
 		// creating a reader on background command's socket
 		if c.socket, err = net.Dial("unix", c.Bg.SocketPath); err != nil {
-			log.Println("(", counter, "/ 3 ) net.Dial error: '", err, "'")
+			log.Println(
+				"[Container] (", counter, "/ 3 ) net.Dial error: '", err, "'")
+			// maximum retries before give up
 			if counter >= 3 {
 				return err
 			} else {
@@ -127,11 +129,11 @@ func (c *Container) listCheckMethods() error {
 
 	req, _ = NewRequest("__list_check_methods", []string{})
 	if resp, err = c.Execute(req); err != nil {
-		log.Fatalln("Socket write error:", err)
+		log.Fatalln("[Container] Socket write error:", err)
 		return err
 	}
 
-	log.Println("Available checks:", strings.Join(resp.Stdout, ", "))
+	log.Printf("[Container] Checks: '%s'", strings.Join(resp.Stdout, "', '"))
 	c.Checks = resp.Stdout
 
 	return nil
@@ -149,13 +151,13 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 	c.errorCh = make(chan error)
 
 	if c.socketDial(); err != nil {
-		log.Fatalln("[SOCKET] Dial error:", err)
+		log.Fatalln("[Container] Socket dial error:", err)
 		return nil, err
 	}
 
-	log.Println("Sending request:", string(req[:]))
+	log.Printf("[Container] Sending request: '%s'", string(req[:]))
 	if _, err = c.socket.Write(req); err != nil {
-		log.Println("[SOCKET] WRITE error:", err)
+		log.Println("[Container] Socket WRITE error:", err)
 		return nil, err
 	}
 
@@ -171,15 +173,14 @@ func (c *Container) Execute(req []byte) (*Response, error) {
 	for {
 		select {
 		case payload = <-c.respCh:
-			log.Println("Got back:", string(payload[:]))
+			log.Printf("[Container] Request's payload: '%s'", string(payload[:]))
 			if resp, err = NewResponse(payload[:]); err != nil {
-				log.Fatalln("Parsing response:", err)
+				log.Fatalln("[Container] Error on parsing response:", err)
 				return nil, err
 			}
-			log.Printf("Response: %#v", resp)
 			return resp, nil
 		case err = <-c.errorCh:
-			log.Println("Socket reading error:", err)
+			log.Println("[Container] Socket reading error:", err)
 			return nil, err
 		}
 	}
@@ -192,7 +193,7 @@ func (c *Container) socketReader() {
 	var err error
 	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, c.socket); err != nil {
-		log.Println("[SOCKET] Read error:", err)
+		log.Println("[Container] Socket read error:", err)
 		c.errorCh <- err
 		return
 	}

@@ -61,7 +61,7 @@ func NewConfig(configPath string) (*Config, error) {
 
 	// checking if informed config file indeed exists
 	if _, err = exists(configPath); err != nil {
-		log.Fatalln("Can't find configuration file at:", cfgPathAbs)
+		log.Printf("[Config] Can't find config file at: '%s'", cfgPathAbs)
 		return nil, err
 	}
 
@@ -78,8 +78,11 @@ func NewConfig(configPath string) (*Config, error) {
 		cfg.GoDutch.ContainersDir,
 	} {
 		// loading containers configuration
-		if err = cfg.globIniConfigFIles(filepath.Dir(cfgPathAbs), dirPath); err != nil {
-			log.Fatalln("Error during containers load:", err)
+		if err = cfg.globIniConfigFIles(
+			filepath.Dir(cfgPathAbs),
+			dirPath,
+		); err != nil {
+			log.Println("[Config] Error on loading config file: ", err)
 			return nil, err
 		}
 	}
@@ -96,25 +99,23 @@ func (cfg *Config) globIniConfigFIles(baseDir string, cfgDir string) error {
 	var cfgPaths []string
 
 	cfgDirAbs, _ = filepath.Abs(filepath.Join(baseDir, cfgDir))
-	log.Printf("[%s] Absolute path: '%s'", baseDir, cfgDirAbs)
 
 	if _, err = exists(cfgDirAbs); err != nil {
-		log.Fatalln("Containers directory does not exist at:", cfgDirAbs)
+		log.Printf("[Config] Containers dir not found at: '%s'", cfgDirAbs)
 		return err
 	}
 
 	// listing files on containers' config directory
 	glob = fmt.Sprintf("%s/*.ini", cfgDirAbs)
 	if cfgPaths, err = filepath.Glob(glob); err != nil {
-		log.Fatalln("Errors on directory glob:", err)
+		log.Println("[Config] Errors on directory glob:", err)
 		return err
 	}
 
 	// loading container configuration files
-	log.Println("Containers config files:", cfgPaths)
 	if len(cfgPaths) > 0 {
 		if err = cfg.loadIniConfigs(cfgPaths); err != nil {
-			log.Fatalln("During config-file load:", err)
+			log.Println("[Config] During config-file load:", err)
 			return err
 		}
 	}
@@ -135,10 +136,10 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 	var name string
 
 	for _, cfgPath = range cfgPaths {
-		log.Printf("Loading file: '%s'", cfgPath)
+		log.Printf("[Config] Loading: '%s'", cfgPath)
 		// parsing container INI file
 		if iniCfg, err = ini.Load(cfgPath); err != nil {
-			log.Fatalln("Config file '", cfgPath, "' error:", err)
+			log.Println("[Config] Config load error:", err)
 			return err
 		}
 
@@ -149,11 +150,11 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 			case "Service":
 				serviceCfg = new(ServiceConfig)
 				if err = section.MapTo(serviceCfg); err != nil {
-					log.Fatalln("Error on mapping Service section:", err)
+					log.Println("[Config] Error on mapTo ServiceConfig:", err)
 					return err
 				}
 				if name, err = sanitizeName(serviceCfg.Name); err != nil {
-					log.Fatalln("Error on sanitize name:", err)
+					log.Println("[Config] Error on sanitize name:", err)
 					return err
 				}
 				serviceCfg.Name = name
@@ -161,11 +162,11 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 			case "Container":
 				containerCfg = new(ContainerConfig)
 				if err = section.MapTo(containerCfg); err != nil {
-					log.Fatalln("Error on mapping Container section:", err)
+					log.Println("[Config] Error on mapTo Container:", err)
 					return err
 				}
 				if name, err = sanitizeName(containerCfg.Name); err != nil {
-					log.Fatalln("Error on sanitize name:", err)
+					log.Println("[Config] Error on sanitize name:", err)
 					return err
 				}
 				containerCfg.Name = name
@@ -173,10 +174,8 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 			case "DEFAULT":
 				continue
 			default:
-				log.Printf("Ignored section: '%s'", sectionName)
+				log.Printf("[Config] Ignored section: '%s'", sectionName)
 			}
-
-			log.Printf("Config section: '%s' -> '%s'", sectionName, name)
 		}
 	}
 
@@ -222,13 +221,13 @@ func parseConfigINI(cfgPathAbs string) (*Config, error) {
 
 	// loading the INI file contents into local struct
 	if iniCfg, err = ini.Load(cfgPathAbs); err != nil {
-		log.Fatalln("Errors on parsing INI:", err)
+		log.Fatalln("[Config] Errors on parsing INI file:", err)
 		return nil, err
 	}
 
 	// mapping configuration into local struct
 	if err = iniCfg.MapTo(cfg); err != nil {
-		log.Fatalln("Errors on mapping INI:", err)
+		log.Fatalln("[Config] Errors on mapping INI:", err)
 		return nil, err
 	}
 

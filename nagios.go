@@ -112,7 +112,6 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"unsafe"
 )
@@ -193,16 +192,13 @@ func NewNrpePacket(cbytes []byte, size int) (*NrpePacket, error) {
 	var pkt *NrpePacket = &NrpePacket{cbytes: cbytes, size: size}
 
 	if err = pkt.checkPacketSize(); err != nil {
-		log.Fatalln("NRPE Packet size does not match:", err)
 		return nil, err
 	}
 
 	// bootstraping C struct from informed bytes
 	pkt.cbytesIntoStruct()
 
-	log.Printf("Recived Packet: %d", pkt.cPacket.packet_version)
 	if err = pkt.validateCRC32(); err != nil {
-		log.Fatalln("NRPE Packet's CRC32 does not match:", err)
 		return nil, err
 	}
 
@@ -260,7 +256,6 @@ func (pkt *NrpePacket) ExtractCmdAndArgsFromBuffer() (string, []string, error) {
 
 	// splitting informed buffer based on exclamation marks, defualt for NRPE
 	buffer = strings.Split(pkt.Buffer, "!")
-	log.Println("Extracted from NPRE Packet buffer:", buffer[:])
 
 	// command will always be the first option, a nagios check name
 	cmd = fmt.Sprintf("%s", buffer[0])
@@ -271,7 +266,7 @@ func (pkt *NrpePacket) ExtractCmdAndArgsFromBuffer() (string, []string, error) {
 		err = errors.New("Can't extract command from buffer:" + pkt.Buffer)
 		return "", nil, err
 	case 1:
-		// command is already extracted
+		// command is already been extracted
 	default:
 		cmd = fmt.Sprintf("%s", buffer[0])
 		args = buffer[1:]

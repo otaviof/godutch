@@ -16,8 +16,8 @@ import (
 	"flag"
 	"github.com/otaviof/godutch"
 	"log"
-	"net/http"
-	_ "net/http/pprof"
+	// "net/http"
+	// _ "net/http/pprof"
 	"time"
 )
 
@@ -57,17 +57,16 @@ func (self *Self) loadContainers() {
 	self.containers = make(map[string]*godutch.Container)
 
 	for name, containerCfg = range self.cfg.Containers {
-		log.Printf("-- Loading container: '%s'", name)
-		log.Println("Container Cfg:", containerCfg)
+		log.Printf("-- Container: '%s'", name)
 
 		if !containerCfg.Enabled {
-			log.Println("--!!-- SKIPPING DISABLED CONTAINER --!!--")
+			log.Printf("### Skipping, disabled container: '%s'", name)
 			continue
 		}
 
 		// spawn a new container
 		if c, err = godutch.NewContainer(containerCfg); err != nil {
-			log.Fatalln("NewContainer error:", err)
+			panic(err)
 		}
 
 		// keeping the container pointer for the onboard step
@@ -87,14 +86,12 @@ func (self *Self) onboardContainers() {
 	var c *godutch.Container
 
 	for name, c = range self.containers {
-		log.Printf("-- Onboarding container: '%s'", name)
+		log.Printf("-- Container onboard: '%s'", name)
 		if err = c.Bootstrap(); err != nil {
-			log.Fatalln("On bootstrap, error:", err)
 			panic(err)
 		}
 
 		if err = self.g.Onboard(c); err != nil {
-			log.Fatalln("Error on onboarding:", err)
 			panic(err)
 		}
 	}
@@ -110,8 +107,14 @@ func (self *Self) loadServices() {
 	self.services = make(map[string]*godutch.Service)
 
 	for name, serviceCfg = range self.cfg.Services {
-		log.Println("Service: ", name)
+		log.Printf("-- Service: '%s'", name)
 
+		if !serviceCfg.Enabled {
+			log.Printf("### Skipping, disabled service: '%s'", name)
+			continue
+		}
+
+		// spawn a new service
 		s = godutch.NewService(serviceCfg, self.g)
 		self.services[name] = s
 
@@ -125,11 +128,13 @@ func (self *Self) loadServices() {
 // checks, linked by the informed GoDutch pointer.
 func (self *Self) onboardServices() {
 	var err error
+	var name string
 	var s *godutch.Service
 
-	for _, s = range self.services {
+	for name, s = range self.services {
+		log.Printf("-- Service onboard: '%s'", name)
 		if err = self.g.Onboard(s); err != nil {
-			log.Fatalln("Error on onboarding:", err)
+			panic(err)
 		}
 	}
 }
@@ -148,9 +153,11 @@ func main() {
 		"Path to configuration file, `godutch.ini`")
 	flag.Parse()
 
-	go func() {
-		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
-	}()
+	/*
+		go func() {
+			log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+		}()
+	*/
 
 	self = Self{cfgPath: configFilePath}
 

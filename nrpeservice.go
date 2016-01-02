@@ -32,18 +32,19 @@ func NewNrpeService(cfg *ServiceConfig, g *GoDutch) *NrpeService {
 // connection handler, when this event happen.
 func (ns *NrpeService) Serve() {
 	var err error
-	var listenOn string = fmt.Sprintf("%s:%d", ns.cfg.Interface, ns.cfg.Port)
 	var conn net.Conn
 
+	log.Printf("[Nrpe] Listening on: '%s'", ns.listenOn)
+
 	// creates a new network listener based on configuration
-	if ns.listener, err = net.Listen("tcp", listenOn); err != nil {
-		log.Fatalln("Error during net.Listen:", err)
+	if ns.listener, err = net.Listen("tcp", ns.listenOn); err != nil {
+		log.Fatalln("[Nrpe] Error during net.Listen:", err)
 		return
 	}
 
 	for {
 		if conn, err = ns.listener.Accept(); err != nil {
-			log.Println("Error during accept connection:", err)
+			log.Println("[Nrpe] Error on accept connection:", err)
 			return
 		}
 		go ns.handleConnection(conn)
@@ -63,26 +64,25 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 	var resp *Response
 
 	if n, err = conn.Read(buf); n == 0 || err != nil {
-		log.Println("Error reading from connection:", err)
+		log.Println("[Nrpe] Error on reading from connection:", err)
 		return
 	}
-	log.Println("Bytes read from connection:", n)
 
 	// transforming payload on a NRPE packet
 	if pkt, err = NewNrpePacket(buf, n); err != nil {
-		log.Fatalln("Payload:", string(buf[:]))
-		log.Fatalln("Error on instantiating a new NRPE Packet:", err)
+		log.Println("[Nrpe] Payload:", string(buf[:]))
+		log.Fatalln("[Nrpe] Error on response NRPE Packet:", err)
 		return
 	}
 
 	if cmd, args, err = pkt.ExtractCmdAndArgsFromBuffer(); err != nil {
-		log.Fatalln("Error on extracting comamnd from buffer:", err)
+		log.Fatalln("[Nrpe] Error on parsing packet's buffer:", err)
 		return
 	}
 
 	// using buffer to exectract command and it's argument
 	if resp, err = ns.godutchExec(cmd, args); err != nil {
-		log.Println("[ERROR] on godutch buffer exec:", err)
+		log.Println("[Nrpe] Error on GODUTCH-EXEC:", err)
 		resp = &Response{
 			Name:   cmd,
 			Status: STATE_UNKNOWN,
@@ -92,12 +92,12 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 
 	// writing back to the connection
 	if _, err = conn.Write(NrpePacketFromResponse(resp)); err != nil {
-		log.Fatalln("Error on writing response:", err)
+		log.Fatalln("[Nrpe] Error on writing response:", err)
 		return
 	}
 
 	if err = conn.Close(); err != nil {
-		log.Println("Error on closing connection:", err)
+		log.Println("[Nrpe] Error on closing connection:", err)
 	}
 }
 
@@ -117,7 +117,7 @@ func (ns *NrpeService) godutchExec(cmd string, args []string) (*Response, error)
 func (ns *NrpeService) Stop() {
 	var err error
 	if err = ns.listener.Close(); err != nil {
-		log.Println("Error on closing listener:", err)
+		log.Println("[Nrpe] Error on closing listener:", err)
 	}
 }
 
