@@ -15,6 +15,7 @@ import (
 // A Container is a wrapper of tools around a background process, on which we
 // communicate using a socket and GoDutch-Protocol, based on JSON.
 //
+
 type Container struct {
 	Name         string
 	Bg           *BgCmd
@@ -24,32 +25,32 @@ type Container struct {
 	Checks       []string
 	respCh       chan []byte
 	errorCh      chan error
-	InputCh   chan *Request
-	OutputCh  chan *Response
 }
 
 // Creates a new container with a background command.
-func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
+func NewContainer(cfg *ContainerConfig) (*Container, error) {
 	var err error
-	var c *Container = &Container{
-		Name: containerCfg.Name,
-		cfg:  containerCfg,
-		InputCh: make(chan *Request, 100),
-		OutputCh: make(chan *Response, 100),
-	}
+	var c *Container
 
 	// verifying if socket directory exists
-	if _, err = exists(containerCfg.SocketDir); err != nil {
+	if _, err = exists(cfg.SocketDir); err != nil {
 		log.Fatalln(
 			"[Container] Can't find socket directory: ('",
-			containerCfg.SocketDir, "'):", err)
+			cfg.SocketDir, "'):", err)
 		return nil, err
 	}
 
-	if len(containerCfg.Command) < 2 {
+	if len(cfg.Command) < 2 {
 		err = errors.New("Informed command is not long enough:" +
-			strings.Join(containerCfg.Command, " "))
+			strings.Join(cfg.Command, " "))
 		return nil, err
+	}
+
+	c = &Container{
+		Name: cfg.Name,
+		cfg:  cfg,
+		respCh: make(chan []byte, 1),
+		errorCh: make(chan error, 1),
 	}
 
 	return c, nil
@@ -64,10 +65,6 @@ func (c *Container) Client() suture.Service {
 	// creating a new background command
 	c.Bg = NewBgCmd(c.cfg)
 	return c.Bg
-}
-
-func (c *Container) Channels() (chan *Request, chan *Response) {
-	return c.InputCh, c.OutputCh
 }
 
 // Returns the inventory of this container. Checks are loaded on Boostrap method
@@ -157,9 +154,6 @@ func (c *Container) Execute(req *Request) (*Response, error) {
 	var err error
 	var payload []byte
 	var resp *Response
-
-	c.respCh = make(chan []byte, 1)
-	c.errorCh = make(chan error, 1)
 
 	if c.socketDial(); err != nil {
 		log.Fatalln("[Container] Socket dial error:", err)
