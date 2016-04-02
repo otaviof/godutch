@@ -1,5 +1,10 @@
 package godutch
 
+//
+// This is the local network listener for NRPE service, which has a integration
+// with Panamax object, therefore it's able to handle the requests directly.
+//
+
 import (
 	"fmt"
 	"log"
@@ -7,22 +12,21 @@ import (
 )
 
 //
-// Defines the NRPE service, which listens on configured interface and it's
-// able to create a NrpePacket object with connection's payload.
+// NRPE service type, basically holds configuration.
 //
 type NrpeService struct {
 	listener net.Listener
 	cfg      *ServiceConfig
-	g        *GoDutch
+	p        *Panamax
 	listenOn string
 }
 
 // Creates a new object from NrpeService.
-func NewNrpeService(cfg *ServiceConfig, g *GoDutch) *NrpeService {
+func NewNrpeService(cfg *ServiceConfig, p *Panamax) *NrpeService {
 	var ns *NrpeService
 	ns = &NrpeService{
 		cfg:      cfg,
-		g:        g,
+		p:        p,
 		listenOn: fmt.Sprintf("%s:%d", cfg.Interface, cfg.Port),
 	}
 	return ns
@@ -81,7 +85,7 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 	}
 
 	// using buffer to exectract command and it's argument
-	if resp, err = ns.godutchExec(cmd, args); err != nil {
+	if resp, err = ns.panamaxExecute(cmd, args); err != nil {
 		log.Println("[Nrpe] Error on GODUTCH-EXEC:", err)
 		resp = &Response{
 			Name:   cmd,
@@ -102,13 +106,20 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 }
 
 // Extract command and arguments from the packet buffer and compose a call
-// towards GoDutch.
-func (ns *NrpeService) godutchExec(cmd string, args []string) (*Response, error) {
-	var err error
+// towards Panamax.
+func (ns *NrpeService) panamaxExecute(cmd string, args []string) (*Response, error) {
+	var req *Request
 	var resp *Response
-	if resp, err = ns.g.Execute(cmd, args); err != nil {
+	var err error
+
+	if req, err = NewRequest(cmd, args); err != nil {
 		return nil, err
 	}
+
+	if resp, err = ns.p.Execute(req); err != nil {
+		return nil, err
+	}
+
 	return resp, nil
 }
 

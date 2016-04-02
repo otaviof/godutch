@@ -10,50 +10,34 @@ import (
 )
 
 func TestNewNrpeService(t *testing.T) {
-	var err error
-	var cfg *Config
-	var g *GoDutch
-	var s *Service
-	var conn net.Conn
-	var listenOn string
-	var n int
-
-	cfg, _ = NewConfig("__etc/godutch/godutch.ini")
-
-	listenOn = fmt.Sprintf(
+	var cfg *Config = mockNewConfig(t)
+	var p *Panamax = mockPanamax(t)
+	var listenOn string = fmt.Sprintf(
 		"%s:%d",
 		cfg.Services["nrpeservice"].Interface,
 		cfg.Services["nrpeservice"].Port)
+	var ns *NrpeService
+	var conn net.Conn
+	var wroteLen int
+	var err error
 
-	g = NewGoDutch()
-	s = NewService(cfg.Services["nrpeservice"], g)
-	g.Register(s)
+	ns = NewNrpeService(cfg.Services["nrpeservice"], p)
 
-	go g.ServeBackground()
+	go ns.Serve()
+	defer ns.Stop()
+	time.Sleep(1e9)
 
 	Convey("Should be able to Onboard a Service", t, func() {
-		err = g.Onboard(s)
-		So(err, ShouldEqual, nil)
-
-		time.Sleep(1e9)
-
 		conn, err = net.Dial("tcp", listenOn)
 		So(err, ShouldEqual, nil)
 
-		n, err = conn.Write(CHECK_NRPE_PAYLOAD)
-		So(n, ShouldEqual, NRPE_PACKET_SIZE)
+		wroteLen, err = conn.Write(CHECK_NRPE_PAYLOAD)
+		So(wroteLen, ShouldEqual, NRPE_PACKET_SIZE)
 		So(err, ShouldEqual, nil)
 
 		err = conn.Close()
 		So(err, ShouldEqual, nil)
 	})
-
-	Convey("Should be able to shutdown a service", t, func() {
-		err = s.Shutdown()
-		So(err, ShouldEqual, nil)
-	})
-
-	defer g.Stop()
 }
 
 /* EOF */
