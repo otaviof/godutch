@@ -6,15 +6,21 @@ import (
 	"testing"
 )
 
-func TestNewConfig(t *testing.T) {
+func mockNewConfig(t *testing.T) (*Config) {
 	var err error
 	var cfg *Config
 
-	cfg, err = NewConfig("__etc/godutch/godutch.ini")
+	cfg, err = NewConfig("test/etc/godutch.ini")
 
 	Convey("Should be able to load config without errors", t, func() {
 		So(err, ShouldEqual, nil)
 	})
+
+	return cfg
+}
+
+func TestNewConfig(t *testing.T) {
+	var cfg *Config = mockNewConfig(t)
 
 	Convey("Should be able to read a String", t, func() {
 		So(cfg.GoDutch.UseUnixSockets, ShouldEqual, true)

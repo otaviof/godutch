@@ -41,6 +41,7 @@ type ContainerConfig struct {
 
 type ServiceConfig struct {
 	Enabled   bool   `ini:"enabled"`
+	Type      string `ini:"type"`
 	Name      string `ini:"name"`
 	Interface string `ini:"interface"`
 	Port      int    `ini:"port"`
