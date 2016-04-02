@@ -13,11 +13,7 @@ import (
 func mockContainer(t *testing.T) *Container {
 	var err error
 	var c *Container
-	var cfg *Config
-
-	if cfg, err = NewConfig("__etc/godutch/godutch.ini"); err != nil {
-		panic(err)
-	}
+	var cfg *Config = mockNewConfig(t)
 
 	c, err = NewContainer(cfg.Containers["rubycontainer"])
 
@@ -31,6 +27,8 @@ func mockContainer(t *testing.T) *Container {
 func mockBootstrappedContainer(t *testing.T) *Container {
 	var err error
 	var c *Container = mockContainer(t)
+
+	c.Client()
 
 	go c.Bg.Serve()
 	defer c.Bg.Stop()
@@ -61,13 +59,12 @@ func TestNewContainer(t *testing.T) {
 func TestBootstrapAndComponentChecks(t *testing.T) {
 	var err error
 	var c *Container = mockBootstrappedContainer(t)
-	var component *Component = c.ComponentInfo()
 
 	Convey("Should be able to bootstrap a container", t, func() {
 		So(
-			strings.Join(component.Checks, "::"),
+			strings.Join(c.Inventory(), "::"),
 			ShouldContainSubstring,
-			"check",
+			"check_",
 		)
 	})
 

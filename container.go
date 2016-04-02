@@ -3,6 +3,7 @@ package godutch
 import (
 	"bytes"
 	"errors"
+	"github.com/thejerf/suture"
 	"io"
 	"log"
 	"net"
@@ -17,17 +18,25 @@ import (
 type Container struct {
 	Name         string
 	Bg           *BgCmd
+	cfg          *ContainerConfig
 	socket       net.Conn
 	bootstrapped bool
 	Checks       []string
 	respCh       chan []byte
 	errorCh      chan error
+	InputCh   chan *Request
+	OutputCh  chan *Response
 }
 
 // Creates a new container with a background command.
 func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
 	var err error
-	var c *Container
+	var c *Container = &Container{
+		Name: containerCfg.Name,
+		cfg:  containerCfg,
+		InputCh: make(chan *Request, 100),
+		OutputCh: make(chan *Response, 100),
+	}
 
 	// verifying if socket directory exists
 	if _, err = exists(containerCfg.SocketDir); err != nil {
@@ -43,27 +52,28 @@ func NewContainer(containerCfg *ContainerConfig) (*Container, error) {
 		return nil, err
 	}
 
-	log.Printf("[Container] Name: '%s', Command: '%s'",
-		containerCfg.Name,
-		strings.Join(containerCfg.Command, " "))
-
-	c = &Container{
-		Name: containerCfg.Name,
-		Bg:   NewBgCmd(containerCfg),
-	}
-
 	return c, nil
 }
 
-// Method to retrieve informatoin about current component towards composer
-// interface.
-func (c *Container) ComponentInfo() *Component {
-	return &Component{
-		Name:     c.Name,
-		Checks:   c.Checks,
-		Type:     "container",
-		Instance: c.Bg,
-	}
+// Creates and responds a pointer to BgCmd, which implements Suture's Service
+// interface, this will be held by the Supervisor.
+func (c *Container) Client() suture.Service {
+	log.Printf("[Container] Name: '%s', Command: '%s'",
+		c.cfg.Name,
+		strings.Join(c.cfg.Command, " "))
+	// creating a new background command
+	c.Bg = NewBgCmd(c.cfg)
+	return c.Bg
+}
+
+func (c *Container) Channels() (chan *Request, chan *Response) {
+	return c.InputCh, c.OutputCh
+}
+
+// Returns the inventory of this container. Checks are loaded on Boostrap method
+// call.
+func (c *Container) Inventory() []string {
+	return c.Checks
 }
 
 // Prepare a container to be up and running, opening the socket using
@@ -79,10 +89,10 @@ func (c *Container) Bootstrap() error {
 	log.Printf("[Container] Bootstraping: '%s', Socket path: '%s'",
 		c.Name, c.Bg.SocketPath)
 
+	// loading check's inventory
 	if err = c.listCheckMethods(); err != nil {
 		return err
 	}
-
 	c.bootstrapped = true
 
 	return nil
@@ -123,11 +133,12 @@ func (c *Container) Shutdown() error {
 // Executes the "__list_check_methods" call on the socket interface, load the
 // response onto Container's Checks array of strings.
 func (c *Container) listCheckMethods() error {
-	var req []byte
+	var req *Request
 	var resp *Response
 	var err error
 
 	req, _ = NewRequest("__list_check_methods", []string{})
+
 	if resp, err = c.Execute(req); err != nil {
 		log.Fatalln("[Container] Socket write error:", err)
 		return err
@@ -142,21 +153,21 @@ func (c *Container) listCheckMethods() error {
 // Execute a request towards the socket interface, simple by syncronously
 // writing on the socket, and via a goroutine reading back from it, which must
 // be a Response type of payload.
-func (c *Container) Execute(req []byte) (*Response, error) {
+func (c *Container) Execute(req *Request) (*Response, error) {
 	var err error
 	var payload []byte
 	var resp *Response
 
-	c.respCh = make(chan []byte)
-	c.errorCh = make(chan error)
+	c.respCh = make(chan []byte, 1)
+	c.errorCh = make(chan error, 1)
 
 	if c.socketDial(); err != nil {
 		log.Fatalln("[Container] Socket dial error:", err)
 		return nil, err
 	}
 
-	log.Printf("[Container] Sending request: '%s'", string(req[:]))
-	if _, err = c.socket.Write(req); err != nil {
+	log.Printf("[Container] Sending request: '%s'", string(req.ToBytes()[:]))
+	if _, err = c.socket.Write(req.ToBytes()); err != nil {
 		log.Println("[Container] Socket WRITE error:", err)
 		return nil, err
 	}
