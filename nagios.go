@@ -12,8 +12,8 @@ package godutch
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netinet/in.h>
 
 // maximum size of a query/response buffer
@@ -114,6 +114,7 @@ import (
 	"fmt"
 	"strings"
 	"unsafe"
+	"encoding/binary"
 )
 
 const (
@@ -146,6 +147,24 @@ type NrpePacket struct {
 
 var cIEEETable *C.ulong = C.generate_crc32_table()
 
+// Wrapping C binary ending conversions to Go, inspired on:
+//   https://github.com/chamaken/cgolmnlo
+func htons(i uint16) uint16 {
+	var b []byte = make([]byte, 2)
+	binary.BigEndian.PutUint16(b, i)
+	return *(*uint16)(unsafe.Pointer(&b[0]))
+}
+
+func htonl(i uint32) uint32 {
+	var b []byte = make([]byte, 4)
+	binary.BigEndian.PutUint32(b, i)
+	return *(*uint32)(unsafe.Pointer(&b[0]))
+}
+
+func ntohl(i uint32) uint32 {
+	return binary.BigEndian.Uint32((*(*[4]byte)(unsafe.Pointer(&i)))[:])
+}
+
 // Transforms a normal Response object back into a NRPE Packet, with proper
 // flags to be considered a response.
 func NrpePacketFromResponse(resp *Response) []byte {
@@ -165,9 +184,9 @@ func NrpePacketFromResponse(resp *Response) []byte {
 	}
 
 	// initial type-casting from Go to C
-	goPkt.packet_version = (int16)(C.htons(C.uint16_t(NRPE_PACKET_VERSION_2)))
-	goPkt.packet_type = (int16)(C.htons(C.uint16_t(NRPE_PACKET_RESPONSE)))
-	goPkt.result_code = (int16)(C.htons(C.uint16_t(resp.Status)))
+	goPkt.packet_version = (int16)(htons(NRPE_PACKET_VERSION_2))
+	goPkt.packet_type = (int16)(htons(NRPE_PACKET_RESPONSE))
+	goPkt.result_code = (int16)(htons(uint16(resp.Status)))
 	goPkt.crc32_value = (uint32)(0)
 
 	for n, bytevalue = range []byte(strings.Join(resp.Stdout, " ")) {
@@ -176,8 +195,7 @@ func NrpePacketFromResponse(resp *Response) []byte {
 
 	// adding CRC32 signature
 	cPkt = (*C.packet)(unsafe.Pointer(&goPkt))
-	goPkt.crc32_value = uint32(
-		C.htonl((C.uint32_t)(C.calc_packet_crc32(cPkt, cIEEETable))))
+	goPkt.crc32_value = uint32(htonl(uint32(C.calc_packet_crc32(cPkt, cIEEETable))))
 
 	// casting back to original formats in order to carry CRC32
 	cPkt = (*C.packet)(unsafe.Pointer(&goPkt))
@@ -215,7 +233,7 @@ func (pkt *NrpePacket) cbytesIntoStruct() {
 	pkt.cPacket = (*C.packet)(unsafe.Pointer(cChar))
 
 	// also extracting crc32 value
-	pkt.CRC32 = uint32(C.ntohl((C.uint32_t)(pkt.cPacket.crc32_value)))
+	pkt.CRC32 = uint32(ntohl(uint32(pkt.cPacket.crc32_value)))
 	// packet's buffer
 	pkt.Buffer = C.GoString((*C.char)(unsafe.Pointer(&pkt.cPacket.buffer)))
 }
