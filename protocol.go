@@ -10,6 +10,11 @@ import (
 // communication msut be wrapped on a "Request"
 //
 type Request struct {
+	payload []byte
+	Fields  requestFields
+}
+
+type requestFields struct {
 	Command   string   `json:"command"`
 	Arguments []string `json:"arguments"`
 }
@@ -27,21 +32,27 @@ type Response struct {
 }
 
 // Creates a slice of bytes that maches the JSON representation of informed
-// arguments, the straight forward input to a socket.
-func NewRequest(commandName string, arguments []string) ([]byte, error) {
+// args, the straight forward input to a socket.
+func NewRequest(name string, args []string) (*Request, error) {
 	var err error
-	var q Request
-	var payload []byte
+	var reqFields requestFields = requestFields{
+		Command:   name,
+		Arguments: args,
+	}
+	var req *Request = &Request{Fields: reqFields}
 
-	q = Request{Command: commandName, Arguments: arguments}
-
-	if payload, err = json.Marshal(q); err != nil {
+	if req.payload, err = json.Marshal(req.Fields); err != nil {
 		log.Fatalln("Error on JSON Marshal: ", err)
 		return nil, err
 	}
-	payload = append(payload, []byte("\n")[0])
 
-	return payload, nil
+	req.payload = append(req.payload, []byte("\n")[0])
+
+	return req, nil
+}
+
+func (req *Request) ToBytes() []byte {
+	return req.payload
 }
 
 // Creates a struct representation of informed slice of bytes, which by default

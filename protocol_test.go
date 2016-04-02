@@ -8,13 +8,13 @@ import (
 
 func TestNewRequest(t *testing.T) {
 	var err error
-	var req []byte
+	var req *Request
 	var reqStr string
 
 	Convey("Should be able to instantiate a new Request", t, func() {
 		req, err = NewRequest("test", []string{})
 		So(err, ShouldEqual, nil)
-		reqStr = string(req[:])
+		reqStr = string(req.ToBytes()[:])
 		So(reqStr, ShouldEqual, "{\"command\":\"test\",\"arguments\":[]}\n")
 	})
 }
