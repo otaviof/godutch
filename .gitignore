@@ -1,4 +1,4 @@
 .DS_Store
-.goconvey.log
-godutch.test
+.*.log
+*.test
 bin/
