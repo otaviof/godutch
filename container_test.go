@@ -3,8 +3,6 @@ package godutch_test
 import (
 	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
-	// "os"
-	// "path"
 	"strings"
 	"testing"
 	"time"

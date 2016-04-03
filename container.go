@@ -47,9 +47,9 @@ func NewContainer(cfg *ContainerConfig) (*Container, error) {
 	}
 
 	c = &Container{
-		Name: cfg.Name,
-		cfg:  cfg,
-		respCh: make(chan []byte, 1),
+		Name:    cfg.Name,
+		cfg:     cfg,
+		respCh:  make(chan []byte, 1),
 		errorCh: make(chan error, 1),
 	}
 
@@ -62,8 +62,10 @@ func (c *Container) Client() suture.Service {
 	log.Printf("[Container] Name: '%s', Command: '%s'",
 		c.cfg.Name,
 		strings.Join(c.cfg.Command, " "))
+
 	// creating a new background command
 	c.Bg = NewBgCmd(c.cfg)
+
 	return c.Bg
 }
 

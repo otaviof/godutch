@@ -6,12 +6,12 @@ import (
 	"testing"
 )
 
-func mockGoDutch(t *testing.T) (*GoDutch) {
+func mockGoDutch(t *testing.T) *GoDutch {
 	var cfg *Config = mockNewConfig(t)
 	var g *GoDutch
 	var err error
 
-	Convey("Should be able to instantiate GoDutch.", t, func () {
+	Convey("Should be able to instantiate GoDutch.", t, func() {
 		g, err = NewGoDutch(cfg)
 		So(err, ShouldEqual, nil)
 	})
@@ -23,7 +23,7 @@ func TestLoadContainers(t *testing.T) {
 	var g *GoDutch = mockGoDutch(t)
 	var err error
 
-	Convey("Should be able to load containers based on config.", t, func () {
+	Convey("Should be able to load containers based on config.", t, func() {
 		err = g.LoadContainers()
 		So(err, ShouldEqual, nil)
 	})

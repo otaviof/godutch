@@ -6,11 +6,11 @@ import (
 	"testing"
 )
 
-func mockPanamax(t *testing.T) (*Panamax) {
+func mockPanamax(t *testing.T) *Panamax {
 	var p *Panamax
 	var err error
 
-	Convey("Should be able to instantiate Panamax", t, func () {
+	Convey("Should be able to instantiate Panamax", t, func() {
 		p, err = NewPanamax()
 		So(err, ShouldEqual, nil)
 	})
@@ -33,12 +33,12 @@ func TestLoadAndExecute(t *testing.T) {
 
 	Convey("Should Execute a Checks using the Panamax's routing", t, func() {
 		for _, name = range []string{"check_test", "check_second_test"} {
-		  req, err = NewRequest(name, []string{})
-		  So(err, ShouldEqual, nil)
+			req, err = NewRequest(name, []string{})
+			So(err, ShouldEqual, nil)
 
-		  resp, err = p.Execute(req)
-		  So(err, ShouldEqual, nil)
-		  So(resp.Name, ShouldEqual, req.Fields.Command)
+			resp, err = p.Execute(req)
+			So(err, ShouldEqual, nil)
+			So(resp.Name, ShouldEqual, req.Fields.Command)
 		}
 	})
 }

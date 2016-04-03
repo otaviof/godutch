@@ -15,13 +15,12 @@ import (
 //
 type GoDutch struct {
 	cfg *Config
-	p *Panamax
-	ns *NrpeService
+	p   *Panamax
+	ns  *NrpeService
 }
 
 // Instantiates a new GoDutch, which will also spawn a new Panamax.
 func NewGoDutch(cfg *Config) (*GoDutch, error) {
-	var g *GoDutch
 	var p *Panamax
 	var err error
 
@@ -29,16 +28,11 @@ func NewGoDutch(cfg *Config) (*GoDutch, error) {
 		return nil, err
 	}
 
-	g = &GoDutch{
-		cfg: cfg,
-		p: p,
-	}
-
-	return g, nil
+	return &GoDutch{cfg: cfg, p: p, ns: nil}, nil
 }
 
 // Go through the configured containers and load (unless disabled).
-func (g *GoDutch) LoadContainers() (error) {
+func (g *GoDutch) LoadContainers() error {
 	var name string
 	var containerCfg *ContainerConfig
 	var err error
@@ -58,15 +52,16 @@ func (g *GoDutch) LoadContainers() (error) {
 	return nil
 }
 
-// Based on configuration loads the k
-func (g *GoDutch) LoadNrpeService() (error) {
+// Based on configuration loads the first NRPE service (type) found on
+// configuration.
+func (g *GoDutch) LoadNrpeService() error {
 	var name string
 	var serviceCfg *ServiceConfig
-	// var err error
 
 	for name, serviceCfg = range g.cfg.Services {
 		log.Printf("[GoDutch] Service: '%s'", name)
 
+		// only allowed service type here is nrpe
 		if serviceCfg.Type != "nrpe" {
 			log.Printf("[GoDutch] Skipping, not 'nrpe' type of service.")
 			continue
@@ -79,6 +74,7 @@ func (g *GoDutch) LoadNrpeService() (error) {
 
 		// initializing NRPE service and informing local Panamax instance
 		g.ns = NewNrpeService(serviceCfg, g.p)
+
 		// only a single nrpe service instance will be loaded
 		break
 	}
@@ -86,9 +82,17 @@ func (g *GoDutch) LoadNrpeService() (error) {
 	return nil
 }
 
-// Start to serve, as in listening on the network interface.
+// Wraps serve method on NRPE service.
 func (g *GoDutch) Serve() {
+	if g.ns == nil {
+		panic("NRPE Service is not loaded, nothing to Serve.")
+	}
 	g.ns.Serve()
+}
+
+func (g *GoDutch) Stop() {
+	g.ns.Stop()
+	g.p.Stop()
 }
 
 /* EOF */

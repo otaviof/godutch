@@ -8,9 +8,9 @@ package godutch
 //
 
 import (
+	"errors"
 	"github.com/thejerf/suture"
 	"log"
-	"errors"
 	"time"
 )
 
@@ -33,20 +33,20 @@ func NewPanamax() (*Panamax, error) {
 			Log: func(line string) { log.Println("[SUTURE-Panamax]", line) },
 		}),
 		containers: make(map[string]*Container),
-		checks:make(map[string]*Container),
+		checks:     make(map[string]*Container),
 	}
 
 	// letting the Supervisor run in background right from the start, it will be
 	// requested to be on running state when onboarding containers
 	go p.ServeBackground()
-	
+
 	return p, nil
 }
 
 // Loads a container based on configuration, starting command in background and
 // loading it's inventory right after. When Container has no checks it will
 // return error.
-func (p *Panamax) Load(cfg *ContainerConfig) (error) {
+func (p *Panamax) Load(cfg *ContainerConfig) error {
 	var found bool = false
 	var item string
 	var err error
