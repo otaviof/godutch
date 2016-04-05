@@ -9,6 +9,7 @@ package godutch
 
 import (
 	"errors"
+	gocache "github.com/patrickmn/go-cache"
 	"github.com/thejerf/suture"
 	"log"
 	"time"
@@ -19,21 +20,21 @@ import (
 //
 type Panamax struct {
 	*suture.Supervisor
-	// maps a container name to it's instance
 	containers map[string]*Container
-	// maps a check name to it's container instance
-	checks map[string]*Container
+	checks     map[string]*Container
+	cache      *gocache.Cache
 }
 
 // Creates a new Panamax instnace. Alocates memotry and loads a new supervisor
 // instance to hold the Containers.
-func NewPanamax() (*Panamax, error) {
+func NewPanamax(cache *gocache.Cache) (*Panamax, error) {
 	var p *Panamax = &Panamax{
 		Supervisor: suture.New("Panamax", suture.Spec{
 			Log: func(line string) { log.Println("[SUTURE-Panamax]", line) },
 		}),
 		containers: make(map[string]*Container),
 		checks:     make(map[string]*Container),
+		cache:      cache,
 	}
 
 	// letting the Supervisor run in background right from the start, it will be
@@ -85,19 +86,30 @@ func (p *Panamax) Load(cfg *ContainerConfig) error {
 	return nil
 }
 
-// Wraps the Execute method from the Container using local inventory.
+// Wraps the Execute method from the Container using local inventory, save the
+// results into Cache.
 func (p *Panamax) Execute(req *Request) (*Response, error) {
 	var name string = req.Fields.Command
 	var found bool = false
+	var resp *Response
 	var err error
 
 	// check's command is it's name, can be found on Request's fields
 	if _, found = p.checks[name]; !found {
+		log.Printf("[Panamax] Can't find check named '%s'", name)
 		err = errors.New("[Panamax] Can't find a check named:" + name)
 		return nil, err
 	}
 
-	return p.checks[name].Execute(req)
+	if resp, err = p.checks[name].Execute(req); err != nil {
+		return nil, err
+	}
+
+	// saving object on cache
+	p.cache.Set(name, resp, gocache.DefaultExpiration)
+	log.Printf("[Panamax] Cache count: '%d'", p.cache.ItemCount())
+
+	return resp, nil
 }
 
 /* EOF */

@@ -6,7 +6,9 @@ package godutch
 //
 
 import (
+	gocache "github.com/patrickmn/go-cache"
 	"log"
+	"time"
 )
 
 //
@@ -14,21 +16,23 @@ import (
 // those elements to work together.
 //
 type GoDutch struct {
-	cfg *Config
-	p   *Panamax
-	ns  *NrpeService
+	cfg   *Config
+	p     *Panamax
+	cache *gocache.Cache
+	ns    *NrpeService
 }
 
 // Instantiates a new GoDutch, which will also spawn a new Panamax.
 func NewGoDutch(cfg *Config) (*GoDutch, error) {
+	var cache *gocache.Cache = gocache.New(time.Minute, 20*time.Second)
 	var p *Panamax
 	var err error
 
-	if p, err = NewPanamax(); err != nil {
+	if p, err = NewPanamax(cache); err != nil {
 		return nil, err
 	}
 
-	return &GoDutch{cfg: cfg, p: p, ns: nil}, nil
+	return &GoDutch{cfg: cfg, p: p, cache: cache, ns: nil}, nil
 }
 
 // Go through the configured containers and load (unless disabled).
