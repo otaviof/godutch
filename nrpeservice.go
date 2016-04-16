@@ -48,7 +48,7 @@ func (ns *NrpeService) Serve() {
 
 	for {
 		if conn, err = ns.listener.Accept(); err != nil {
-			log.Println("[Nrpe] Error on accept connection:", err)
+			log.Println("[Nrpe] Error on accepting connection:", err)
 			return
 		}
 		go ns.handleConnection(conn)

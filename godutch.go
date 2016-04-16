@@ -56,7 +56,7 @@ func (g *GoDutch) LoadContainers() error {
 	return nil
 }
 
-// Based on configuration loads the first NRPE service (type) found on
+// Based on configuration loads the first NRPE service (typ ) found on
 // configuration.
 func (g *GoDutch) LoadNrpeService() error {
 	var name string
