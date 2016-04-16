@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func mockNewConfig(t *testing.T) (*Config) {
+func mockNewConfig(t *testing.T) *Config {
 	var err error
 	var cfg *Config
 
@@ -27,17 +27,21 @@ func TestNewConfig(t *testing.T) {
 	})
 
 	Convey("Should be able to read a Integer", t, func() {
-		So(cfg.Services["nrpeservice"].Port, ShouldEqual, 5666)
+		So(cfg.Service["nrpeservice"].Port, ShouldEqual, 5666)
 	})
 
 	Convey("Should be able to load example containers", t, func() {
-		So(len(cfg.Containers), ShouldBeGreaterThan, 0)
-		So(cfg.Containers["rubycontainer"].Command[0],
+		So(len(cfg.Container), ShouldBeGreaterThan, 0)
+		So(cfg.Container["rubycontainer"].Command[0],
 			ShouldEqual,
 			"/usr/bin/ruby")
-		So(cfg.Containers["perlcontainer"].Command[0],
+		So(cfg.Container["perlcontainer"].Command[0],
 			ShouldContainSubstring,
 			"bin/godutch")
+	})
+
+	Convey("Should be able to detect NCSA configuration", t, func() {
+		So(cfg.Service["ncsaservice"].Type, ShouldEqual, "NCSA")
 	})
 }
 

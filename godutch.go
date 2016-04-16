@@ -24,9 +24,11 @@ type GoDutch struct {
 
 // Instantiates a new GoDutch, which will also spawn a new Panamax.
 func NewGoDutch(cfg *Config) (*GoDutch, error) {
-	var cache *gocache.Cache = gocache.New(time.Minute, 20*time.Second)
+	var cache *gocache.Cache
 	var p *Panamax
 	var err error
+
+	cache = gocache.New(time.Minute, 20*time.Second)
 
 	if p, err = NewPanamax(cache); err != nil {
 		return nil, err
@@ -41,7 +43,7 @@ func (g *GoDutch) LoadContainers() error {
 	var containerCfg *ContainerConfig
 	var err error
 
-	for name, containerCfg = range g.cfg.Containers {
+	for name, containerCfg = range g.cfg.Container {
 		log.Printf("[GoDutch] Container: '%s'", name)
 		if !containerCfg.Enabled {
 			log.Printf("[GoDutch] Skipping, Container is disabled.")
@@ -62,7 +64,7 @@ func (g *GoDutch) LoadNrpeService() error {
 	var name string
 	var serviceCfg *ServiceConfig
 
-	for name, serviceCfg = range g.cfg.Services {
+	for name, serviceCfg = range g.cfg.Service {
 		log.Printf("[GoDutch] Service: '%s'", name)
 
 		// only allowed service type here is nrpe
@@ -76,7 +78,8 @@ func (g *GoDutch) LoadNrpeService() error {
 			continue
 		}
 
-		// initializing NRPE service and informing local Panamax instance
+		// initializing NRPE service and informing local Panamax instance, then
+		// the service is able to call for checks execution
 		g.ns = NewNrpeService(serviceCfg, g.p)
 
 		// only a single nrpe service instance will be loaded

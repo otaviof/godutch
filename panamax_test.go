@@ -2,16 +2,21 @@ package godutch_test
 
 import (
 	. "github.com/otaviof/godutch"
+	gocache "github.com/patrickmn/go-cache"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"time"
 )
 
 func mockPanamax(t *testing.T) *Panamax {
 	var p *Panamax
 	var err error
+	var cache *gocache.Cache
+
+	cache = gocache.New(time.Minute, 20*time.Second)
 
 	Convey("Should be able to instantiate Panamax", t, func() {
-		p, err = NewPanamax()
+		p, err = NewPanamax(cache)
 		So(err, ShouldEqual, nil)
 	})
 
@@ -27,7 +32,7 @@ func TestLoadAndExecute(t *testing.T) {
 	var err error
 
 	Convey("Should load a container", t, func() {
-		err = p.Load(cfg.Containers["rubycontainer"])
+		err = p.Load(cfg.Container["rubycontainer"])
 		So(err, ShouldEqual, nil)
 	})
 

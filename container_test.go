@@ -13,7 +13,7 @@ func mockContainer(t *testing.T) *Container {
 	var c *Container
 	var cfg *Config = mockNewConfig(t)
 
-	c, err = NewContainer(cfg.Containers["rubycontainer"])
+	c, err = NewContainer(cfg.Container["rubycontainer"])
 
 	Convey("Should not return errors on NewContainer", t, func() {
 		So(err, ShouldEqual, nil)
@@ -47,7 +47,7 @@ func TestNewContainer(t *testing.T) {
 		SocketDir: "/tmp",
 		Command:   []string{"sleep", "1"},
 	}
-
+	s
 	Convey("Should not return errors on NewContainer", t, func() {
 		_, err = NewContainer(containerCfg)
 		So(err, ShouldEqual, nil)

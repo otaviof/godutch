@@ -1,5 +1,10 @@
 package godutch
 
+//
+// Config handles INI files spread over a few directories. The contents will be
+// parsed into specific structs, regarding containers or services.
+//
+
 import (
 	"errors"
 	"fmt"
@@ -15,9 +20,9 @@ import (
 // Holds INI configuration file contents mapped into Config data struture.
 //
 type Config struct {
-	GoDutch    GoDutchConfig
-	Services   map[string]*ServiceConfig
-	Containers map[string]*ContainerConfig
+	GoDutch   GoDutchConfig
+	Service   map[string]*ServiceConfig
+	Container map[string]*ContainerConfig
 }
 
 //
@@ -45,6 +50,7 @@ type ServiceConfig struct {
 	Name      string `ini:"name"`
 	Interface string `ini:"interface"`
 	Port      int    `ini:"port"`
+	DialOn    string `ini:"dial_on"`
 	Ssl       bool   `ini:"ssl"`
 }
 
@@ -71,8 +77,8 @@ func NewConfig(configPath string) (*Config, error) {
 		return nil, err
 	}
 
-	cfg.Services = make(map[string]*ServiceConfig)
-	cfg.Containers = make(map[string]*ContainerConfig)
+	cfg.Service = make(map[string]*ServiceConfig)
+	cfg.Container = make(map[string]*ContainerConfig)
 
 	for _, dirPath = range []string{
 		cfg.GoDutch.ServicesDir,
@@ -125,7 +131,7 @@ func (cfg *Config) globIniConfigFIles(baseDir string, cfgDir string) error {
 }
 
 // Receives a list of Container INI configuration files and load them into
-// "Containers" section of primary Config instance.
+// "Container" section of primary Config instance.
 func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 	var err error
 	var iniCfg *ini.File
@@ -158,8 +164,9 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 					log.Println("[Config] Error on sanitize name:", err)
 					return err
 				}
+				log.Printf("[Config] Adding service: '%s'", name)
 				serviceCfg.Name = name
-				cfg.Services[name] = serviceCfg
+				cfg.Service[name] = serviceCfg
 			case "Container":
 				containerCfg = new(ContainerConfig)
 				if err = section.MapTo(containerCfg); err != nil {
@@ -170,8 +177,9 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 					log.Println("[Config] Error on sanitize name:", err)
 					return err
 				}
+				log.Printf("[Config] Adding container: '%s'", name)
 				containerCfg.Name = name
-				cfg.Containers[name] = containerCfg
+				cfg.Container[name] = containerCfg
 			case "DEFAULT":
 				continue
 			default:

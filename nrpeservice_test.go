@@ -14,14 +14,14 @@ func TestNewNrpeService(t *testing.T) {
 	var p *Panamax = mockPanamax(t)
 	var listenOn string = fmt.Sprintf(
 		"%s:%d",
-		cfg.Services["nrpeservice"].Interface,
-		cfg.Services["nrpeservice"].Port)
+		cfg.Service["nrpeservice"].Interface,
+		cfg.Service["nrpeservice"].Port)
 	var ns *NrpeService
 	var conn net.Conn
 	var wroteLen int
 	var err error
 
-	ns = NewNrpeService(cfg.Services["nrpeservice"], p)
+	ns = NewNrpeService(cfg.Service["nrpeservice"], p)
 
 	go ns.Serve()
 	defer ns.Stop()
