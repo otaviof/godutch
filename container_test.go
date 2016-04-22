@@ -47,7 +47,7 @@ func TestNewContainer(t *testing.T) {
 		SocketDir: "/tmp",
 		Command:   []string{"sleep", "1"},
 	}
-	s
+
 	Convey("Should not return errors on NewContainer", t, func() {
 		_, err = NewContainer(containerCfg)
 		So(err, ShouldEqual, nil)
