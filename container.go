@@ -177,7 +177,7 @@ func (c *Container) Execute(req *Request) (*Response, error) {
 	go c.socketReader()
 
 	// TODO
-	//  * Handle request timeouts (http://stackoverflow.com/questions/9680812);
+	//  * Handle request timeouts http://stackoverflow.com/questions/9680812;
 	for {
 		select {
 		case payload = <-c.respCh:

@@ -58,32 +58,34 @@ func (g *GoDutch) LoadContainers() error {
 	return nil
 }
 
-// Based on configuration loads the first NRPE service (type) found on
-// configuration.
-func (g *GoDutch) LoadNrpeService() error {
-	var name string
+// Loads all services listed on configuration files, skips when it's disabled
+// and had specific loading mechanisms for each service. Return error.
+func (g *GoDutch) LoadServices() error {
 	var serviceCfg *ServiceConfig
+	var name string
+	// var err error
 
 	for name, serviceCfg = range g.cfg.Service {
 		log.Printf("[GoDutch] Service: '%s'", name)
 
-		// only allowed service type here is nrpe
-		if serviceCfg.Type != "nrpe" {
-			log.Printf("[GoDutch] Skipping, not 'nrpe' type of service.")
-			continue
-		}
-
 		if !serviceCfg.Enabled {
-			log.Printf("[GoDutch] Skipping, Service is disabled.")
+			log.Printf("[GoDutch] Skipping '%s', Service is disabled.", name)
 			continue
 		}
 
-		// initializing NRPE service and informing local Panamax instance, then
-		// the service is able to call for checks execution
-		g.ns = NewNrpeService(serviceCfg, g.p)
-
-		// only a single nrpe service instance will be loaded
-		break
+		switch serviceCfg.Type {
+		case "nrpe":
+			log.Println("[GoDutch] Loading NRPE Service")
+			// initializing NRPE service and informing local Panamax instance,
+			// then the service is able to call for checks execution
+			g.ns = NewNrpeService(serviceCfg, g.p)
+		case "nsca":
+			log.Println("[GoDutch] Loading NSCA Service")
+		case "carbon":
+			log.Println("[GoDutch] Loading Carbon Relay Service")
+		default:
+			panic("[GoDutch] Service type is unkown: " + name)
+		}
 	}
 
 	return nil

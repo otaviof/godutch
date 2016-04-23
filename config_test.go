@@ -1,8 +1,10 @@
 package godutch_test
 
 import (
+	"fmt"
 	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
+	"log"
 	"testing"
 )
 
@@ -21,6 +23,12 @@ func mockNewConfig(t *testing.T) *Config {
 
 func TestNewConfig(t *testing.T) {
 	var cfg *Config = mockNewConfig(t)
+	var sc *ServiceConfig
+	var dialOn []string
+	var dialStr string
+	var host string
+	var port int
+	var i int
 
 	Convey("Should be able to read a String", t, func() {
 		So(cfg.GoDutch.UseUnixSockets, ShouldEqual, true)
@@ -40,8 +48,26 @@ func TestNewConfig(t *testing.T) {
 			"bin/godutch")
 	})
 
-	Convey("Should be able to detect NCSA configuration", t, func() {
-		So(cfg.Service["ncsaservice"].Type, ShouldEqual, "NCSA")
+	Convey("Should be able to detect NSCA configuration", t, func() {
+		So(cfg.Service["nscaservice"].Type, ShouldEqual, "NSCA")
+	})
+
+	Convey("Should be able to parse Carbon's 'dial_on' string", t, func() {
+		sc = cfg.Service["carbonrelay"]
+		So(sc.Type, ShouldEqual, "Carbon")
+		dialOn = sc.ParseDialOn()
+		log.Println("[Debug] DialOn: ", dialOn)
+		So(len(dialOn), ShouldEqual, 2)
+
+		for i, dialStr = range dialOn {
+			// adapting position counter to match mock configuration
+			i += 1
+			// parsing into host (string) and port (int)
+			host, port = sc.ParseDialString(dialStr)
+
+			So(host, ShouldEqual, fmt.Sprintf("null%d.local", i))
+			So(port, ShouldEqual, 2003)
+		}
 	})
 }
 

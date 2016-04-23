@@ -21,7 +21,8 @@ type NrpeService struct {
 	listenOn string
 }
 
-// Creates a new object from NrpeService.
+// Creates a new instance of NRPE serice, which recieves a pointer of Panamax,
+// and then it's able to call checks on running containers.
 func NewNrpeService(cfg *ServiceConfig, p *Panamax) *NrpeService {
 	var ns *NrpeService
 	ns = &NrpeService{

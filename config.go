@@ -11,8 +11,10 @@ import (
 	"github.com/go-ini/ini"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -141,9 +143,16 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 	var serviceCfg *ServiceConfig
 	var containerCfg *ContainerConfig
 	var name string
+	var match bool
 
 	for _, cfgPath = range cfgPaths {
 		log.Printf("[Config] Loading: '%s'", cfgPath)
+
+		if match, _ = path.Match("\\.\\#*\\.ini", path.Base(cfgPath)); match {
+			log.Printf("[Config] Ignoring config file: '%s'", cfgPath)
+			continue
+		}
+
 		// parsing container INI file
 		if iniCfg, err = ini.Load(cfgPath); err != nil {
 			log.Println("[Config] Config load error:", err)
@@ -189,6 +198,21 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 	}
 
 	return nil
+}
+
+// Parses the "dial_on" string present on services that need to dial a external
+// network communication.
+func (sc *ServiceConfig) ParseDialOn() []string {
+	return strings.Split(sc.DialOn, ", ")
+}
+
+func (sc *ServiceConfig) ParseDialString(dialStr string) (string, int) {
+	var str []string = strings.Split(dialStr, ":")
+	var host string = str[0]
+	var port string = str[1]
+	var portInt int
+	portInt, _ = strconv.Atoi(port)
+	return host, portInt
 }
 
 // Returns a sanitized name based on input raw input string. By a sanitized name
