@@ -2,4 +2,4 @@
 .*.log
 *.test
 .#*.go
-bin/
+/bin/godutch

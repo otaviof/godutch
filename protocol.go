@@ -1,5 +1,10 @@
 package godutch
 
+//
+// Definitions about the protocol used to communicate with the Containers and
+// also methods to create Request and Response objects.
+//
+
 import (
 	"encoding/json"
 	"log"

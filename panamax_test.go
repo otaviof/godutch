@@ -36,6 +36,8 @@ func TestLoadAndExecute(t *testing.T) {
 		So(err, ShouldEqual, nil)
 	})
 
+	// We assume here the ruby container will have "check_test" and
+	// "check_second_test" methods, it's hardcoded here and in other tests
 	Convey("Should Execute a Checks using the Panamax's routing", t, func() {
 		for _, name = range []string{"check_test", "check_second_test"} {
 			req, err = NewRequest(name, []string{})

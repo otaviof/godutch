@@ -84,6 +84,7 @@ func (c *Container) Bootstrap() error {
 		log.Println("[Container] Already has been bootstraped, skipping.")
 		return nil
 	}
+	c.bootstrapped = true
 
 	log.Printf("[Container] Bootstraping: '%s', Socket path: '%s'",
 		c.Name, c.Bg.SocketPath)
@@ -92,7 +93,6 @@ func (c *Container) Bootstrap() error {
 	if err = c.listCheckMethods(); err != nil {
 		return err
 	}
-	c.bootstrapped = true
 
 	return nil
 }
@@ -162,6 +162,10 @@ func (c *Container) Execute(req *Request) (*Response, error) {
 		return nil, err
 	}
 
+	// to be closed when we end this func, in other words, right after reading
+	// data or handling connection error
+	defer c.socket.Close()
+
 	log.Printf("[Container] Sending request: '%s'", string(req.ToBytes()[:]))
 	if _, err = c.socket.Write(req.ToBytes()); err != nil {
 		log.Println("[Container] Socket WRITE error:", err)
@@ -171,9 +175,6 @@ func (c *Container) Execute(req *Request) (*Response, error) {
 	// background routine to read socke's FD, informing response and error
 	// channels when there's data back, for socket-close action we adopt defer
 	go c.socketReader()
-	// to be closed when we end this func, in other words, right after reading
-	// data or handling connection error
-	defer c.socket.Close()
 
 	// TODO
 	//  * Handle request timeouts (http://stackoverflow.com/questions/9680812);
