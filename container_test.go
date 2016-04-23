@@ -22,14 +22,18 @@ func mockContainer(t *testing.T) *Container {
 	return c
 }
 
-func mockBootstrappedContainer(t *testing.T) *Container {
+// Returns a bootstrapped container with the option of using a defer stop, when
+// informed by parameter.
+func mockBootstrappedContainer(t *testing.T, deferStop bool) *Container {
 	var err error
 	var c *Container = mockContainer(t)
 
 	c.Client()
-
 	go c.Bg.Serve()
-	defer c.Bg.Stop()
+
+	if deferStop {
+		defer c.Bg.Stop()
+	}
 
 	Convey("Should be able to bootstrap a container", t, func() {
 		time.Sleep(1e9)
@@ -56,7 +60,9 @@ func TestNewContainer(t *testing.T) {
 
 func TestBootstrapAndComponentChecks(t *testing.T) {
 	var err error
-	var c *Container = mockBootstrappedContainer(t)
+	var req *Request
+	var resp *Response
+	var c *Container = mockBootstrappedContainer(t, false)
 
 	Convey("Should be able to bootstrap a container", t, func() {
 		So(
@@ -64,6 +70,16 @@ func TestBootstrapAndComponentChecks(t *testing.T) {
 			ShouldContainSubstring,
 			"check_",
 		)
+	})
+
+	// This test expect to find '{"okay": 1}' as Metrics returned by
+	// "check_test" on the ruby container
+	Convey("Should be able to execute a exiting check", t, func() {
+		req, _ = NewRequest("check_test", []string{})
+		resp, err = c.Execute(req)
+		So(err, ShouldEqual, nil)
+		So(resp.Metrics[0], ShouldContainKey, "okay")
+		So(resp.Metrics[0]["okay"], ShouldEqual, 1)
 	})
 
 	Convey("Should be able to shutdown container.", t, func() {

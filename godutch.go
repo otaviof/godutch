@@ -58,7 +58,7 @@ func (g *GoDutch) LoadContainers() error {
 	return nil
 }
 
-// Based on configuration loads the first NRPE service (typ ) found on
+// Based on configuration loads the first NRPE service (type) found on
 // configuration.
 func (g *GoDutch) LoadNrpeService() error {
 	var name string
@@ -97,6 +97,7 @@ func (g *GoDutch) Serve() {
 	g.ns.Serve()
 }
 
+// Wraps stop call for the NRPE service and Panamax objects.
 func (g *GoDutch) Stop() {
 	g.ns.Stop()
 	g.p.Stop()
