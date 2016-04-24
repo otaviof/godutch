@@ -8,6 +8,7 @@ package godutch
 import (
 	"encoding/json"
 	"log"
+	"time"
 )
 
 //
@@ -34,6 +35,7 @@ type Response struct {
 	Stdout  []string         `json:"stdout"`
 	Metrics []map[string]int `json:"metrics,omitempty"`
 	Error   string           `json:"error,omitempty"`
+	Ts      int32            `json:"ts,omitempty"`
 }
 
 // Creates a slice of bytes that maches the JSON representation of informed
@@ -71,6 +73,9 @@ func NewResponse(payload []byte) (*Response, error) {
 		log.Fatalln("Error on JSON marchal:", err)
 		return nil, err
 	}
+
+	// adding current timestamp on response
+	resp.Ts = int32(time.Now().Unix())
 
 	return resp, nil
 }

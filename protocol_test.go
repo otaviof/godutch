@@ -39,6 +39,7 @@ func TestNewResponseCheckReturn(t *testing.T) {
 		resp, err := NewResponse(payload)
 		So(err, ShouldEqual, nil)
 		So(resp.Status, ShouldEqual, 0)
+		So(resp.Ts, ShouldBeGreaterThan, 0)
 	})
 }
 
