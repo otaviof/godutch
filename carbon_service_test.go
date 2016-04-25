@@ -9,9 +9,9 @@ import (
 )
 
 func populatedCache() *gocache.Cache {
+	var metrics []map[string]int
 	var cache *gocache.Cache
 	var resp *Response
-	var metrics []map[string]int
 
 	metrics = append(metrics, map[string]int{"okay": 1})
 	cache = gocache.New(time.Minute, 20*time.Second)
@@ -32,10 +32,7 @@ func TestNewCarbonService(t *testing.T) {
 	var carbonService *CarbonService
 	var cache *gocache.Cache = populatedCache()
 
-	Convey("Should be able to spawn a new CarbonService", t, func() {
-		carbonService, err = NewCarbonService(cfg.Service["carbonrelay"], cache)
-		So(err, ShouldEqual, nil)
-	})
+	carbonService = NewCarbonService(cfg.Service["carbonrelay"], cache)
 
 	Convey("Should be able to send metrics into Carbon", t, func() {
 		err = carbonService.Send()

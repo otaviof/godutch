@@ -19,15 +19,14 @@ type CarbonService struct {
 }
 
 // Creates a new instance of CarbonService, which takes a cache object.
-func NewCarbonService(cfg *ServiceConfig, cache *gocache.Cache) (
-	*CarbonService, error) {
+func NewCarbonService(cfg *ServiceConfig, cache *gocache.Cache) *CarbonService {
 	var cs *CarbonService
 	cs = &CarbonService{
 		cfg:    cfg,
 		cache:  cache,
 		DialOn: cfg.ParseDialOn(),
 	}
-	return cs, nil
+	return cs
 }
 
 // Sends the metrics towards carbon server, first ask for gathering of the
@@ -35,13 +34,13 @@ func NewCarbonService(cfg *ServiceConfig, cache *gocache.Cache) (
 // sequentially, logging the results.
 func (cs *CarbonService) Send() error {
 	var err error
+	var metrics []gocarbon.Metric
+	var i int
+	var dialStr string
 	var host string
 	var port int
-	var dialStr string
 	var carbon *gocarbon.Carbon
-	var i int
 	var last int = len(cs.DialOn)
-	var metrics []gocarbon.Metric
 
 	metrics = cs.extractMetricsFromCache()
 
@@ -57,9 +56,12 @@ func (cs *CarbonService) Send() error {
 			log.Printf("[Carbon] Error on connecting to: '%s:%d'", host, port)
 			log.Println("[Carbon] Error:", err)
 
-			// checking if there's more hosts to try connection
+			// using DialOn index to know how many hosts can we still use on the
+			// connection attempts
 			if i >= last {
 				log.Println("[Carbon] No more hosts to try.")
+				// last know error is being returned, although, more erros might
+				// have been written to the logs
 				return err
 			} else {
 				continue
