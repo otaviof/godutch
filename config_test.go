@@ -54,7 +54,7 @@ func TestNewConfig(t *testing.T) {
 
 	Convey("Should be able to parse Carbon's 'dial_on' string", t, func() {
 		sc = cfg.Service["carbonrelay"]
-		So(sc.Type, ShouldEqual, "Carbon")
+		So(sc.Type, ShouldEqual, "carbon")
 		dialOn = sc.ParseDialOn()
 		log.Println("[Debug] DialOn: ", dialOn)
 		So(len(dialOn), ShouldEqual, 2)

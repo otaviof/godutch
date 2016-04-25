@@ -20,6 +20,7 @@ type GoDutch struct {
 	p     *Panamax
 	cache *gocache.Cache
 	ns    *NrpeService
+	cs    *CarbonService
 }
 
 // Instantiates a new GoDutch, which will also spawn a new Panamax.
@@ -66,10 +67,11 @@ func (g *GoDutch) LoadServices() error {
 	// var err error
 
 	for name, serviceCfg = range g.cfg.Service {
-		log.Printf("[GoDutch] Service: '%s'", name)
+		log.Printf("[GoDutch] Service: '%s' (%s)", name, serviceCfg.Type)
 
 		if !serviceCfg.Enabled {
-			log.Printf("[GoDutch] Skipping '%s', Service is disabled.", name)
+			log.Printf("[GoDutch] Skipping '%s' (%s), Service is disabled.",
+				name, serviceCfg.Type)
 			continue
 		}
 
@@ -83,8 +85,19 @@ func (g *GoDutch) LoadServices() error {
 			log.Println("[GoDutch] Loading NSCA Service")
 		case "carbon":
 			log.Println("[GoDutch] Loading Carbon Relay Service")
+			// spawning a new Carbon Relay type of service, using local cache to
+			// dispatch metrics
+			g.cs = NewCarbonService(serviceCfg, g.cache)
+
+			// background routine to pick up items from cache and send to carbon
+			go func(cs *CarbonService) {
+				for {
+					time.Sleep(5 * time.Second)
+					g.cs.Send()
+				}
+			}(g.cs)
 		default:
-			panic("[GoDutch] Service type is unkown: " + name)
+			panic("[GoDutch] Service type is unkown: " + serviceCfg.Type)
 		}
 	}
 
@@ -96,7 +109,8 @@ func (g *GoDutch) Serve() {
 	if g.ns == nil {
 		panic("NRPE Service is not loaded, nothing to Serve.")
 	}
-	g.ns.Serve()
+	// nrpe service in background
+	go g.ns.Serve()
 }
 
 // Wraps stop call for the NRPE service and Panamax objects.

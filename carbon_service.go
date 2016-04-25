@@ -13,20 +13,43 @@ import (
 )
 
 type CarbonService struct {
-	cfg    *ServiceConfig
-	cache  *gocache.Cache
-	DialOn []string
+	cfg   *ServiceConfig
+	cache *gocache.Cache
+	// mapping the metrics that are already sent over the network with their
+	// respective timestamp, to avoid duplication
+	sentMetric map[string]int32
+	DialOn     []string
 }
 
 // Creates a new instance of CarbonService, which takes a cache object.
 func NewCarbonService(cfg *ServiceConfig, cache *gocache.Cache) *CarbonService {
 	var cs *CarbonService
 	cs = &CarbonService{
-		cfg:    cfg,
-		cache:  cache,
-		DialOn: cfg.ParseDialOn(),
+		cfg:        cfg,
+		cache:      cache,
+		sentMetric: make(map[string]int32),
+		DialOn:     cfg.ParseDialOn(),
 	}
 	return cs
+}
+
+// Guards a local cache of sent metrics, when it's already sent it will return
+// true, otherwise update local cache and return false.
+func (cs *CarbonService) isMetricSent(name string, ts int32) bool {
+	var currentTs int32
+	var found bool
+
+	// when metric is found on local cache and it's timestamp matches what's
+	// informed by parameter, this metric have been already sent
+	if currentTs, found = cs.sentMetric[name]; found && currentTs >= ts {
+		return true
+	}
+
+	// otherwise, updating the local cache, and returning false, the metric is
+	// not yet present
+	cs.sentMetric[name] = ts
+
+	return false
 }
 
 // Sends the metrics towards carbon server, first ask for gathering of the
@@ -44,6 +67,11 @@ func (cs *CarbonService) Send() error {
 
 	metrics = cs.extractMetricsFromCache()
 
+	if len(metrics) == 0 {
+		log.Println("[Carbon] No metrics to be sent, skipping.")
+		return nil
+	}
+
 	for i, dialStr = range cs.DialOn {
 		// extracting host and port from the dial-string
 		host, port = cs.cfg.ParseDialString(dialStr)
@@ -54,7 +82,7 @@ func (cs *CarbonService) Send() error {
 		// host on the list
 		if carbon, err = gocarbon.NewCarbon(host, port, false, false); err != nil {
 			log.Printf("[Carbon] Error on connecting to: '%s:%d'", host, port)
-			log.Println("[Carbon] Error:", err)
+			log.Println("[Carbon] Error returned:", err)
 
 			// using DialOn index to know how many hosts can we still use on the
 			// connection attempts
@@ -117,6 +145,13 @@ func (cs *CarbonService) extractMetricsFromCache() []gocarbon.Metric {
 		// checking whether are metrics to be sent
 		if len(resp.Metrics) <= 0 {
 			log.Printf("[Carbon] Cache entry has no metrics.")
+			continue
+		}
+
+		// checking if metric is already sent, by consulting local cache
+		if cs.isMetricSent(itemName, resp.Ts) {
+			log.Printf("[Carbon] Metric is dispatched: '%s' (timestamp %d)",
+				itemName, resp.Ts)
 			continue
 		}
 

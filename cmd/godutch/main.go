@@ -43,7 +43,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	if err = g.LoadNrpeService(); err != nil {
+	if err = g.LoadServices(); err != nil {
 		log.Fatalln(err)
 	}
 
