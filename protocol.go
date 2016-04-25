@@ -38,6 +38,20 @@ type Response struct {
 	Ts      int32            `json:"ts,omitempty"`
 }
 
+// Methods to be compliant with gonrpe.NrpeResponser interface, and therefore
+// fetch the primary three major items from local type struct.
+func (resp *Response) GetName() string {
+	return resp.Name
+}
+
+func (resp *Response) GetStatus() int {
+	return resp.Status
+}
+
+func (resp *Response) GetStdout() []string {
+	return resp.Stdout
+}
+
 // Creates a slice of bytes that maches the JSON representation of informed
 // args, the straight forward input to a socket.
 func NewRequest(name string, args []string) (*Request, error) {

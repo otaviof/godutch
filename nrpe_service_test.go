@@ -3,6 +3,7 @@ package godutch_test
 import (
 	"fmt"
 	. "github.com/otaviof/godutch"
+	"github.com/otaviof/gonrpe"
 	. "github.com/smartystreets/goconvey/convey"
 	"net"
 	"testing"
@@ -31,8 +32,8 @@ func TestNewNrpeService(t *testing.T) {
 		conn, err = net.Dial("tcp", listenOn)
 		So(err, ShouldEqual, nil)
 
-		wroteLen, err = conn.Write(CHECK_NRPE_PAYLOAD)
-		So(wroteLen, ShouldEqual, NRPE_PACKET_SIZE)
+		wroteLen, err = conn.Write(gonrpe.SAMPLE_PACKET_NRPE_PAYLOAD)
+		So(wroteLen, ShouldEqual, gonrpe.NRPE_PACKET_SIZE)
 		So(err, ShouldEqual, nil)
 
 		err = conn.Close()

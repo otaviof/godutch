@@ -7,6 +7,7 @@ package godutch
 
 import (
 	"fmt"
+	"github.com/otaviof/gonrpe"
 	"log"
 	"net"
 )
@@ -62,8 +63,8 @@ func (ns *NrpeService) Serve() {
 func (ns *NrpeService) handleConnection(conn net.Conn) {
 	var err error
 	var n int
-	var buf []byte = make([]byte, NRPE_PACKET_SIZE)
-	var pkt *NrpePacket
+	var buf []byte = make([]byte, gonrpe.NRPE_PACKET_SIZE)
+	var pkt *gonrpe.NrpePacket
 	var cmd string
 	var args []string = []string{}
 	var resp *Response
@@ -74,7 +75,7 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 	}
 
 	// transforming payload on a NRPE packet
-	if pkt, err = NewNrpePacket(buf, n); err != nil {
+	if pkt, err = gonrpe.NewNrpePacket(buf, n); err != nil {
 		log.Println("[Nrpe] Payload:", string(buf[:]))
 		log.Fatalln("[Nrpe] Error on response NRPE Packet:", err)
 		return
@@ -90,13 +91,13 @@ func (ns *NrpeService) handleConnection(conn net.Conn) {
 		log.Println("[Nrpe] Error on GODUTCH-EXEC:", err)
 		resp = &Response{
 			Name:   cmd,
-			Status: STATE_UNKNOWN,
+			Status: gonrpe.STATE_UNKNOWN,
 			Stdout: []string{fmt.Sprintf("[ERROR] %s", err)},
 		}
 	}
 
 	// writing back to the connection
-	if _, err = conn.Write(NrpePacketFromResponse(resp)); err != nil {
+	if _, err = conn.Write(gonrpe.NrpePacketFromResponse(resp)); err != nil {
 		log.Fatalln("[Nrpe] Error on writing response:", err)
 		return
 	}
