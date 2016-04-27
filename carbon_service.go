@@ -10,6 +10,7 @@ import (
 	gocarbon "github.com/jforman/carbon-golang"
 	gocache "github.com/patrickmn/go-cache"
 	"log"
+	"time"
 )
 
 type CarbonService struct {
@@ -174,6 +175,16 @@ func (cs *CarbonService) extractMetricsFromCache() []gocarbon.Metric {
 	}
 
 	return metrics
+}
+
+// Here on Carbon, the "serve" method will start looking at local Cache and send
+// metrics towards Carbon end-point by calling "send" method locally. Intended
+// to run in background.
+func (cs *CarbonService) Serve() {
+	for {
+		time.Sleep(10 * time.Second)
+		cs.Send()
+	}
 }
 
 /* EOF */

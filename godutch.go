@@ -88,14 +88,8 @@ func (g *GoDutch) LoadServices() error {
 			// spawning a new Carbon Relay type of service, using local cache to
 			// dispatch metrics
 			g.cs = NewCarbonService(serviceCfg, g.cache)
-
-			// background routine to pick up items from cache and send to carbon
-			go func(cs *CarbonService) {
-				for {
-					time.Sleep(5 * time.Second)
-					g.cs.Send()
-				}
-			}(g.cs)
+		case "sensu":
+			log.Println("[GoDutch] Loading Sensu Service")
 		default:
 			panic("[GoDutch] Service type is unkown: " + serviceCfg.Type)
 		}
@@ -109,8 +103,10 @@ func (g *GoDutch) Serve() {
 	if g.ns == nil {
 		panic("NRPE Service is not loaded, nothing to Serve.")
 	}
-	// nrpe service in background
+	// nrpe service accepting connections
 	go g.ns.Serve()
+	// carbon relay inpecting cache and sending metrics
+	go g.cs.Serve()
 }
 
 // Wraps stop call for the NRPE service and Panamax objects.

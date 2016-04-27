@@ -13,7 +13,7 @@ import (
 
 //
 // A Request is the basic query unit towards a GoDutch client, any incoming
-// communication msut be wrapped on a "Request"
+// communication msut be wrapped on a "Request".
 //
 type Request struct {
 	payload []byte
