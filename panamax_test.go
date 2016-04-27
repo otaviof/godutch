@@ -57,6 +57,8 @@ func TestLoadAndExecute(t *testing.T) {
 		for _, name = range []string{"check_test", "check_second_test"} {
 			So(p.CheckLastRun(name), ShouldBeGreaterThanOrEqualTo, 0)
 		}
+		// for a not existing check, should come back negative
+		So(p.CheckLastRun("dummy"), ShouldEqual, -1)
 	})
 }
 
