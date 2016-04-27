@@ -20,9 +20,10 @@ import (
 //
 type Panamax struct {
 	*suture.Supervisor
-	containers map[string]*Container
-	checks     map[string]*Container
-	cache      *gocache.Cache
+	containers   map[string]*Container
+	checks       map[string]*Container
+	checkLastRun map[string]int64
+	cache        *gocache.Cache
 }
 
 // Creates a new Panamax instnace. Alocates memotry and loads a new supervisor
@@ -32,9 +33,10 @@ func NewPanamax(cache *gocache.Cache) (*Panamax, error) {
 		Supervisor: suture.New("Panamax", suture.Spec{
 			Log: func(line string) { log.Println("[SUTURE-Panamax]", line) },
 		}),
-		containers: make(map[string]*Container),
-		checks:     make(map[string]*Container),
-		cache:      cache,
+		containers:   make(map[string]*Container),
+		checks:       make(map[string]*Container),
+		checkLastRun: make(map[string]int64),
+		cache:        cache,
 	}
 
 	// letting the Supervisor run in background right from the start, it will be
@@ -109,7 +111,20 @@ func (p *Panamax) Execute(req *Request) (*Response, error) {
 	p.cache.Set(name, resp, gocache.DefaultExpiration)
 	log.Printf("[Panamax] Cache count: '%d'", p.cache.ItemCount())
 
+	// saving last run on local punched card
+	p.checkLastRun[name] = time.Now().Unix()
+
 	return resp, nil
+}
+
+func (p *Panamax) CheckLastRun(name string) int64 {
+	var found bool
+	var lastRunTs int64
+	if lastRunTs, found = p.checkLastRun[name]; !found {
+		// since it's not found, it has never ran
+		return -1
+	}
+	return time.Now().Unix() - lastRunTs
 }
 
 /* EOF */
