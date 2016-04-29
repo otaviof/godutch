@@ -4,7 +4,6 @@ import (
 	"fmt"
 	. "github.com/otaviof/godutch"
 	. "github.com/smartystreets/goconvey/convey"
-	"log"
 	"testing"
 )
 
@@ -45,12 +44,12 @@ func TestNewConfig(t *testing.T) {
 			"/usr/bin/ruby")
 		So(cfg.Container["perlcontainer"].Command[0],
 			ShouldContainSubstring,
-			"bin/godutch")
+			"bin")
 	})
 
 	Convey("Should be able to detect NSCA configuration", t, func() {
-		So(cfg.Service["nscaservice"].Port, ShouldBeGreaterThan, 0)
 		So(cfg.Service["nscaservice"].Type, ShouldEqual, "nsca")
+		So(cfg.Service["nscaservice"].Port, ShouldEqual, 0)
 		So(cfg.Service["nscaservice"].LastRunThreshold, ShouldBeGreaterThan, 0)
 	})
 
@@ -58,7 +57,6 @@ func TestNewConfig(t *testing.T) {
 		sc = cfg.Service["carbonrelay"]
 		So(sc.Type, ShouldEqual, "carbon")
 		dialOn = sc.ParseDialOn()
-		log.Println("[Debug] DialOn: ", dialOn)
 		So(len(dialOn), ShouldEqual, 2)
 
 		for i, dialStr = range dialOn {

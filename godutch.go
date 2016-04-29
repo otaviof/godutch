@@ -152,6 +152,8 @@ func (g *GoDutch) Stop() {
 	g.p.Stop()
 }
 
+// Using Panamax data, loop through the checks that are delayed, executing them
+// sequentially. This method is intended to run in background.
 func (g *GoDutch) runDelayedChecks() {
 	var name string
 	var lastRun int64
@@ -173,11 +175,9 @@ func (g *GoDutch) runDelayedChecks() {
 		for name, lastRun = range g.p.ChecksRunReport(g.lastRunThreshold) {
 			log.Printf("[GoDutch] Executing '%s', last run at %ds ago (%ds threshold)",
 				name, lastRun, g.lastRunThreshold)
-
 			if req, err = NewRequest(name, []string{}); err != nil {
 				log.Fatalln("[GoDutch] Error on creating request to: '%s'", name)
 			}
-
 			if _, err = g.p.Execute(req); err != nil {
 				log.Println("[GoDutch] Error on execute: ", err)
 			}

@@ -183,7 +183,6 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 				cfg.Service[name] = serviceCfg
 
 				log.Printf("[Config] DEBUG serviceCfg: '%+v'", serviceCfg)
-
 			case "Container":
 				containerCfg = new(ContainerConfig)
 
@@ -201,6 +200,7 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 				containerCfg.Name = name
 				cfg.Container[name] = containerCfg
 
+				log.Printf("[Config] DEBUG containerCfg: '%+v'", containerCfg)
 			case "DEFAULT":
 				continue
 			default:

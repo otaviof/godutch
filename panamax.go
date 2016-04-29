@@ -31,7 +31,7 @@ type Panamax struct {
 func NewPanamax(cache *gocache.Cache) (*Panamax, error) {
 	var p *Panamax = &Panamax{
 		Supervisor: suture.New("Panamax", suture.Spec{
-			Log: func(line string) { log.Println("[SUTURE-Panamax]", line) },
+			Log: func(line string) { log.Println("[SUTURE]", line) },
 		}),
 		containers:   make(map[string]*Container),
 		checks:       make(map[string]*Container),
