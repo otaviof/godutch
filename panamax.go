@@ -117,6 +117,7 @@ func (p *Panamax) Execute(req *Request) (*Response, error) {
 	return resp, nil
 }
 
+// For a given check name returns the amounf of seconds since it's last run.
 func (p *Panamax) CheckLastRun(name string) int64 {
 	var found bool
 	var lastRunTs int64
@@ -125,6 +126,29 @@ func (p *Panamax) CheckLastRun(name string) int64 {
 		return -1
 	}
 	return time.Now().Unix() - lastRunTs
+}
+
+// Go through the existing checks and build up a map having check's name as key
+// and last run (seconds from now) as value.
+func (p *Panamax) ChecksRunReport(threshold int64) map[string]int64 {
+	var name string
+	var lastRun int64
+	var report map[string]int64 = make(map[string]int64)
+
+	for name, _ = range p.checks {
+		lastRun = p.CheckLastRun(name)
+		log.Printf("[Panamax] Check '%s' has it's last run %ds ago.", name, lastRun)
+		// check's last run must be above the threshold, and last run not set to
+		// -1 which means the check has never ran before
+		if lastRun >= 0 && lastRun < threshold {
+			continue
+		}
+		log.Printf("[Panamax] Check '%s' is delayed by %ds (out of %ds)",
+			name, lastRun, threshold)
+		report[name] = lastRun
+	}
+
+	return report
 }
 
 /* EOF */

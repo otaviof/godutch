@@ -83,8 +83,8 @@ func NewResponse(payload []byte) (*Response, error) {
 	var resp *Response = &Response{}
 
 	if err = json.Unmarshal(payload, resp); err != nil {
-		log.Fatalln("Payload:", string(payload[:]))
-		log.Fatalln("Error on JSON marchal:", err)
+		log.Fatalln("[Protocol] Error on payload: '",
+			string(payload[:]), "' returned error '", err)
 		return nil, err
 	}
 

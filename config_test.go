@@ -49,7 +49,9 @@ func TestNewConfig(t *testing.T) {
 	})
 
 	Convey("Should be able to detect NSCA configuration", t, func() {
-		So(cfg.Service["nscaservice"].Type, ShouldEqual, "NSCA")
+		So(cfg.Service["nscaservice"].Port, ShouldBeGreaterThan, 0)
+		So(cfg.Service["nscaservice"].Type, ShouldEqual, "nsca")
+		So(cfg.Service["nscaservice"].LastRunThreshold, ShouldBeGreaterThan, 0)
 	})
 
 	Convey("Should be able to parse Carbon's 'dial_on' string", t, func() {

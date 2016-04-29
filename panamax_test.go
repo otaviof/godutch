@@ -51,8 +51,8 @@ func TestLoadAndExecute(t *testing.T) {
 		}
 	})
 
-	/// After running the checks, we can measure how old is the last run in
-	/// seconds
+	/// After running the checks, we can measure how old is the last run, in
+	/// seconds (unixtimestamp based)
 	Convey("Should calculate when the check has last ran", t, func() {
 		for _, name = range []string{"check_test", "check_second_test"} {
 			So(p.CheckLastRun(name), ShouldBeGreaterThanOrEqualTo, 0)

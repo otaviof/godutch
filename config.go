@@ -47,13 +47,14 @@ type ContainerConfig struct {
 }
 
 type ServiceConfig struct {
-	Enabled   bool   `ini:"enabled"`
-	Type      string `ini:"type"`
-	Name      string `ini:"name"`
-	Interface string `ini:"interface"`
-	Port      int    `ini:"port"`
-	DialOn    string `ini:"dial_on"`
-	Ssl       bool   `ini:"ssl"`
+	Enabled          bool   `ini:"enabled"`
+	Type             string `ini:"type"`
+	Name             string `ini:"name"`
+	Interface        string `ini:"interface"`
+	Port             int    `ini:"port"`
+	DialOn           string `ini:"dial_on"`
+	Ssl              bool   `ini:"ssl"`
+	LastRunThreshold int64  `ini:"last_run_threshold"`
 }
 
 // Instantiate a new Config type, by loading informed configuration file and
@@ -148,47 +149,58 @@ func (cfg *Config) loadIniConfigs(cfgPaths []string) error {
 	for _, cfgPath = range cfgPaths {
 		log.Printf("[Config] Loading: '%s'", cfgPath)
 
+		// avoiding dummy files
 		if match, _ = path.Match("\\.\\#*\\.ini", path.Base(cfgPath)); match {
 			log.Printf("[Config] Ignoring config file: '%s'", cfgPath)
 			continue
 		}
 
-		// parsing container INI file
 		if iniCfg, err = ini.Load(cfgPath); err != nil {
 			log.Println("[Config] Config load error:", err)
 			return err
 		}
 
+		// the section names will determine witch kind of configuratio this is
 		for _, sectionName = range iniCfg.SectionStrings() {
 			section = iniCfg.Section(sectionName)
 
 			switch sectionName {
 			case "Service":
 				serviceCfg = new(ServiceConfig)
+
 				if err = section.MapTo(serviceCfg); err != nil {
 					log.Println("[Config] Error on mapTo ServiceConfig:", err)
 					return err
 				}
+
 				if name, err = sanitizeName(serviceCfg.Name); err != nil {
 					log.Println("[Config] Error on sanitize name:", err)
 					return err
 				}
+
 				log.Printf("[Config] Adding service: '%s'", name)
 				serviceCfg.Name = name
 				cfg.Service[name] = serviceCfg
+
+				log.Printf("[Config] DEBUG serviceCfg: '%+v'", serviceCfg)
+
 			case "Container":
 				containerCfg = new(ContainerConfig)
+
 				if err = section.MapTo(containerCfg); err != nil {
 					log.Println("[Config] Error on mapTo Container:", err)
 					return err
 				}
+
 				if name, err = sanitizeName(containerCfg.Name); err != nil {
 					log.Println("[Config] Error on sanitize name:", err)
 					return err
 				}
+
 				log.Printf("[Config] Adding container: '%s'", name)
 				containerCfg.Name = name
 				cfg.Container[name] = containerCfg
+
 			case "DEFAULT":
 				continue
 			default:
