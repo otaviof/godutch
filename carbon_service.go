@@ -145,7 +145,7 @@ func (cs *CarbonService) extractMetricsFromCache() []gocarbon.Metric {
 
 		// checking whether are metrics to be sent
 		if len(resp.Metrics) <= 0 {
-			log.Printf("[Carbon] Cache entry has no metrics.")
+			log.Printf("[Carbon] Cache entry '%s' has no metrics.", itemName)
 			continue
 		}
 

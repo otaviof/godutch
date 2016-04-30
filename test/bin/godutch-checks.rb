@@ -16,6 +16,12 @@ module TestGoDutch
     critical('Here stuff is getting hard!')
     'something else'
   end
+
+  def check_third_test
+  end
+
+  def check_forth_test
+  end
 end
 
 GoDutch.run(TestGoDutch)
