@@ -1,0 +1,88 @@
+* GoDutch
+GoDutch is a minimalistic application server focused on monitoring. It also has
+the objective of bringing monitoring tooling closer of the software developement
+teams by ofering a more library driven approach.
+
+During monitoring execution the collected metrics are sent to Carbon, in order to
+reduce the amount of calls to monitor a given application, service or host.
+Therefore by keeping the elements in memory it has a low footprint in terms of
+resource consuption and very low latency.
+
+The application server also has a "supervised" ability, to detect a failed
+monitoring-container inside GoDutch and promptly restart it before =check_nrpe=
+command times out.
+
+** Features and Goodies
+*** Closer to Software Development Teams
+Mapping methods into check names is a simple way to declare monitoring units and
+re-use them along your code, only the methods starting with =check_= will be
+considered, and therefore they are the only ones expsed to external calls. Also
+having agents for their own major project language brings it closer to software
+development routine, to hand-over monitoring checks that are more aligned with the
+acutally projects and tooling.
+
+At this moment only Ruby and Perl are supported, and the idea is to expand to as
+many languages as possible as this project develops. The communication with the
+different programming languages is handled via a =JSON= based protocol, described
+under the  "Project Development" section bellow.
+
+**** Supported Languages
+- *Ruby* (https://github.com/otaviof/godutch-gem);
+- Perl (https://github.com/isutton/godutch-perl);
+
+*** Pro-Active Monitoring
+On services configuration file(s) -- more to GoDutch configuration subject in the
+topic bellow -- you can define =last_run_threshold= setting which will trigger check
+runs following that age (in seconds). And if in this new run the check is now
+failig, this will be reported via the NSCA service,
+
+**** Nagios NSCA Integration
+- talk about the NSCA feature and what it adds to the game;
+
+**** Additional Use-Case: Metrics Provider
+By automatically running the checks in a timely fashion it can also play as a
+metric provider, since the underlying code will collect the live metrics and
+asyncronously =GoDutch= will feed the configured =Carbon= daemon.
+
+**** Multiple Servers
+On =Carbon= and =NSCA= you can define as many end-point servers as you want on their
+configuration files, then =GoDutch= will try to use them sequentially, when the
+first node fails it will try the next until the message/metric is succesfuly
+delivered.
+
+*** Resource Consumption and Latency
+The traditional approach on monitoring is creating a brand new process on every
+check query (or call), therefore the operational system is constantly spawing new
+process, creating spikes in resource consumption besides the efficiency of this
+method. The good side of traditional approach is not creating any cache of
+possibility of so, which is also taken in consideration by =GoDutch=, but is
+nevertheless a safe way of offering this guarantee.
+
+However the world where modern application are living in is driven by resource
+consumption and low latency standards, which are the points =GoDutch= is strong at.
+Also taken in consideration the re-used metrics, this is concentrating the
+monitoring/telemetry efforts in a unit, adding efficiency. And due the in memory
+workload, =GoDutch= offers a very low latency if compared with the described normal
+approach.
+
+** Configuration
+- ini configuration files and all the shebangs beloging to it, like directories
+  and spread over files;
+
+*** GoDutch
+*** Containers
+*** Services
+
+** Project Development
+*** Go Based
+- running tests, this yada-yada;
+
+*** External Go Code
+ - =carbon-golang= (https://github.com/jforman/carbon-golang);
+ - =go-cache= (https://github.com/patrickmn/go-cache);
+ - =gonrpe= (https://github.com/otaviof/gonrpe);
+ - =nsca= (https://github.com/Syncbak-Git/nsca);
+
+*** =GoDutch= Protocol
+- explain how communication is handled between GoDutch and the container's
+  processes via socket;
